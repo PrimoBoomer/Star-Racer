@@ -1,0 +1,10 @@
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://dyaujup24015c"]
+
+[ext_resource type="Texture2D" uid="uid://bs1q6sl53uhlc" path="res://tracks/circuit_one/map1.png" id="1_lquvc"]
+[ext_resource type="Texture2D" path="res://tracks/circuit_one/asphalt.png" id="2_albedo"]
+
+[resource]
+albedo_texture = ExtResource("2_albedo")
+normal_enabled = true
+normal_texture = ExtResource("1_lquvc")
+uv1_scale = Vector3(8, 8, 8)

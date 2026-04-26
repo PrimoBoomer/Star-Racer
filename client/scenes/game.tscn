@@ -1,0 +1,760 @@
+[gd_scene format=3 uid="uid://byhujfase7yp8"]
+
+[ext_resource type="Script" uid="uid://0u22f5eygcu3" path="res://scripts/game.gd" id="1_lbhrr"]
+[ext_resource type="Script" uid="uid://bl7brkqwdge4k" path="res://scripts/network.gd" id="2_iywne"]
+[ext_resource type="Environment" uid="uid://bq0j3trnouuvl" path="res://env.tres" id="3_p57ef"]
+[ext_resource type="Script" uid="uid://dtpgdenatq2uo" path="res://scripts/ui.gd" id="4_u5sy4"]
+[ext_resource type="Shader" path="res://shaders/menu_bg.gdshader" id="5_menubg"]
+[ext_resource type="Script" path="res://scripts/drift_bar.gd" id="6_driftbar"]
+[ext_resource type="Script" path="res://scripts/start_lights.gd" id="7_startlights"]
+
+[sub_resource type="SystemFont" id="SystemFont_r5v3i"]
+font_names = PackedStringArray("Calibri")
+subpixel_positioning = 0
+
+[sub_resource type="LabelSettings" id="LabelSettings_ll2xe"]
+font = SubResource("SystemFont_r5v3i")
+font_size = 71
+font_color = Color(0.3019608, 0.63529414, 0.85882354, 1)
+outline_size = 5
+outline_color = Color(0, 0, 0, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_t348e"]
+font_size = 11
+font_color = Color(0.3019608, 0.63529414, 0.85882354, 1)
+outline_size = 2
+outline_color = Color(0, 0, 0, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_rnhwg"]
+font_size = 12
+
+[sub_resource type="LabelSettings" id="LabelSettings_4dm54"]
+font_size = 18
+outline_size = 8
+outline_color = Color(0, 0, 0, 1)
+
+[sub_resource type="SystemFont" id="SystemFont_hm561"]
+font_names = PackedStringArray("Lucida Console")
+subpixel_positioning = 0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jahkg"]
+bg_color = Color(0.04, 0.07, 0.14, 0.78)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.34, 0.66, 0.92, 0.65)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+shadow_color = Color(0.20, 0.45, 0.85, 0.32)
+shadow_size = 22
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_intermission"]
+bg_color = Color(0.04, 0.07, 0.14, 0.38)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.34, 0.66, 0.92, 0.80)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+shadow_color = Color(0.20, 0.45, 0.85, 0.32)
+shadow_size = 22
+
+[sub_resource type="StyleBoxFlat" id="SBF_btn_normal"]
+bg_color = Color(0.05, 0.10, 0.18, 0.85)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.34, 0.66, 0.92, 0.55)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 26.0
+content_margin_top = 16.0
+content_margin_right = 26.0
+content_margin_bottom = 16.0
+
+[sub_resource type="StyleBoxFlat" id="SBF_btn_hover"]
+bg_color = Color(0.10, 0.18, 0.30, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.85, 1.0, 0.95)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 26.0
+content_margin_top = 16.0
+content_margin_right = 26.0
+content_margin_bottom = 16.0
+
+[sub_resource type="StyleBoxFlat" id="SBF_btn_pressed"]
+bg_color = Color(0.16, 0.28, 0.46, 1.0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.85, 1.0, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 26.0
+content_margin_top = 16.0
+content_margin_right = 26.0
+content_margin_bottom = 16.0
+
+[sub_resource type="StyleBoxFlat" id="SBF_btn_focus"]
+draw_center = false
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.85, 1.0, 0.85)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="SBF_btn_disabled"]
+bg_color = Color(0.04, 0.07, 0.13, 0.7)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.18, 0.27, 0.36, 0.5)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 26.0
+content_margin_top = 16.0
+content_margin_right = 26.0
+content_margin_bottom = 16.0
+
+[sub_resource type="StyleBoxFlat" id="SBF_le_normal"]
+bg_color = Color(0.04, 0.10, 0.18, 0.80)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.20, 0.34, 0.48, 0.75)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 16.0
+content_margin_top = 12.0
+content_margin_right = 16.0
+content_margin_bottom = 12.0
+
+[sub_resource type="StyleBoxFlat" id="SBF_le_focus"]
+bg_color = Color(0.06, 0.13, 0.22, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.85, 1.0, 0.95)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 15.0
+content_margin_top = 11.0
+content_margin_right = 15.0
+content_margin_bottom = 11.0
+
+[sub_resource type="StyleBoxFlat" id="SBF_tree_panel"]
+bg_color = Color(0.03, 0.07, 0.13, 0.55)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.20, 0.34, 0.48, 0.55)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="SBF_tree_selected"]
+bg_color = Color(0.18, 0.32, 0.52, 0.85)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="SBF_tree_hover"]
+bg_color = Color(0.12, 0.20, 0.32, 0.55)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="Theme" id="Theme_main"]
+default_font_size = 20
+Button/colors/font_color = Color(0.86, 0.92, 1.0, 1.0)
+Button/colors/font_hover_color = Color(1.0, 1.0, 1.0, 1.0)
+Button/colors/font_pressed_color = Color(0.80, 0.92, 1.0, 1.0)
+Button/colors/font_focus_color = Color(1.0, 1.0, 1.0, 1.0)
+Button/colors/font_disabled_color = Color(0.40, 0.50, 0.62, 1.0)
+Button/font_sizes/font_size = 22
+Button/styles/normal = SubResource("SBF_btn_normal")
+Button/styles/hover = SubResource("SBF_btn_hover")
+Button/styles/pressed = SubResource("SBF_btn_pressed")
+Button/styles/focus = SubResource("SBF_btn_focus")
+Button/styles/disabled = SubResource("SBF_btn_disabled")
+LineEdit/colors/font_color = Color(0.92, 0.96, 1.0, 1.0)
+LineEdit/colors/font_placeholder_color = Color(0.50, 0.60, 0.74, 0.7)
+LineEdit/colors/caret_color = Color(0.55, 0.85, 1.0, 1.0)
+LineEdit/colors/selection_color = Color(0.30, 0.55, 0.85, 0.45)
+LineEdit/font_sizes/font_size = 20
+LineEdit/styles/normal = SubResource("SBF_le_normal")
+LineEdit/styles/focus = SubResource("SBF_le_focus")
+Label/colors/font_color = Color(0.84, 0.92, 1.0, 1.0)
+Label/font_sizes/font_size = 20
+Tree/colors/font_color = Color(0.86, 0.93, 1.0, 1.0)
+Tree/colors/font_hovered_color = Color(1.0, 1.0, 1.0, 1.0)
+Tree/colors/font_selected_color = Color(1.0, 1.0, 1.0, 1.0)
+Tree/colors/title_button_color = Color(0.55, 0.78, 0.95, 0.85)
+Tree/font_sizes/font_size = 18
+Tree/font_sizes/title_button_font_size = 16
+Tree/styles/panel = SubResource("SBF_tree_panel")
+Tree/styles/selected = SubResource("SBF_tree_selected")
+Tree/styles/selected_focus = SubResource("SBF_tree_selected")
+Tree/styles/hovered = SubResource("SBF_tree_hover")
+OptionButton/colors/font_color = Color(0.86, 0.92, 1.0, 1.0)
+OptionButton/colors/font_hover_color = Color(1.0, 1.0, 1.0, 1.0)
+OptionButton/colors/font_pressed_color = Color(0.80, 0.92, 1.0, 1.0)
+OptionButton/colors/font_focus_color = Color(1.0, 1.0, 1.0, 1.0)
+OptionButton/colors/font_disabled_color = Color(0.40, 0.50, 0.62, 1.0)
+OptionButton/font_sizes/font_size = 20
+OptionButton/styles/normal = SubResource("SBF_btn_normal")
+OptionButton/styles/hover = SubResource("SBF_btn_hover")
+OptionButton/styles/pressed = SubResource("SBF_btn_pressed")
+OptionButton/styles/focus = SubResource("SBF_btn_focus")
+OptionButton/styles/disabled = SubResource("SBF_btn_disabled")
+HSeparator/constants/separation = 16
+
+[sub_resource type="LabelSettings" id="LabelSettings_lobby_title"]
+font = SubResource("SystemFont_hm561")
+font_size = 56
+font_color = Color(0.55, 0.88, 1.0, 1.0)
+outline_size = 6
+outline_color = Color(0, 0, 0, 0.95)
+
+[sub_resource type="LabelSettings" id="LabelSettings_track_sub"]
+font_size = 22
+font_color = Color(0.65, 0.80, 0.95, 0.95)
+outline_size = 4
+outline_color = Color(0, 0, 0, 0.85)
+
+[sub_resource type="LabelSettings" id="LabelSettings_pilots_header"]
+font_size = 14
+font_color = Color(0.55, 0.78, 0.95, 0.7)
+outline_size = 2
+outline_color = Color(0, 0, 0, 0.6)
+
+[sub_resource type="LabelSettings" id="LabelSettings_players_count"]
+font_size = 16
+font_color = Color(0.70, 0.82, 0.95, 0.85)
+
+[sub_resource type="LabelSettings" id="LabelSettings_countdown"]
+font_size = 64
+font_color = Color(1.0, 0.92, 0.55, 1.0)
+outline_size = 7
+outline_color = Color(0, 0, 0, 1)
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_y0s6v"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_avk8s"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_u1o2k"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8rs83"]
+bg_color = Color(0.34664527, 0.6312599, 0.8338006, 1)
+corner_radius_top_left = 15
+corner_radius_top_right = 15
+corner_radius_bottom_right = 15
+corner_radius_bottom_left = 15
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_30hyq"]
+bg_color = Color(0.14509805, 0.2509804, 0.30588236, 1)
+corner_radius_top_left = 15
+corner_radius_top_right = 15
+corner_radius_bottom_right = 15
+corner_radius_bottom_left = 15
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_menubg"]
+shader = ExtResource("5_menubg")
+
+[node name="Root" type="Node" unique_id=426461752]
+
+[node name="Game" type="Node" parent="." unique_id=322353589]
+unique_name_in_owner = true
+script = ExtResource("1_lbhrr")
+
+[node name="Network" type="Node" parent="Game" unique_id=495099737 groups=["Network"]]
+unique_name_in_owner = true
+script = ExtResource("2_iywne")
+
+[node name="Track" type="Node3D" parent="Game" unique_id=1256846866]
+unique_name_in_owner = true
+
+[node name="Camera3D" type="Camera3D" parent="Game" unique_id=186793719]
+environment = ExtResource("3_p57ef")
+
+[node name="UI" type="Control" parent="Game" unique_id=68307350]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = SubResource("Theme_main")
+script = ExtResource("4_u5sy4")
+
+[node name="MenuBackground" type="ColorRect" parent="Game/UI" unique_id=700000001]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+material = SubResource("ShaderMaterial_menubg")
+
+[node name="AlphaInfo" type="Control" parent="Game/UI" unique_id=313684329]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="GameTitle" type="Label" parent="Game/UI/AlphaInfo" unique_id=1843833676]
+layout_mode = 1
+offset_right = 227.0
+offset_bottom = 56.0
+text = "Star Racer"
+label_settings = SubResource("LabelSettings_ll2xe")
+
+[node name="GameAuthor" type="Label" parent="Game/UI/AlphaInfo/GameTitle" unique_id=60573804]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -8.954987
+offset_top = -25.125
+offset_right = 44.04544
+offset_bottom = -7.1249695
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_font_sizes/font_size = 7
+text = "By Primo"
+label_settings = SubResource("LabelSettings_t348e")
+
+[node name="GameVersion" type="Label" parent="Game/UI/AlphaInfo" unique_id=1668176429]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -73.0
+offset_bottom = 29.0
+grow_horizontal = 0
+text = "v0.1 alpha
+30/03/2026"
+label_settings = SubResource("LabelSettings_rnhwg")
+horizontal_alignment = 2
+
+[node name="GameInfo" type="Label" parent="Game/UI/AlphaInfo" unique_id=1824683306]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -45.0
+offset_right = 290.0
+grow_vertical = 0
+text = "github.com/PrimoBoomer/Star-Racer-Server
+github.com/PrimoBoomer/Star-Racer-Client
+ko-fi.com/primo_boomer"
+label_settings = SubResource("LabelSettings_rnhwg")
+
+[node name="InfoLabel" type="Label" parent="Game/UI" unique_id=63298000]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -8.0
+offset_top = -30.0
+offset_right = -7.0
+offset_bottom = 4.0
+grow_horizontal = 0
+grow_vertical = 0
+label_settings = SubResource("LabelSettings_4dm54")
+horizontal_alignment = 2
+
+[node name="OnlineMenu" type="Panel" parent="Game/UI" unique_id=582721910]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.20
+anchor_top = 0.12
+anchor_right = 0.80
+anchor_bottom = 0.90
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_jahkg")
+
+[node name="Container" type="VBoxContainer" parent="Game/UI/OnlineMenu" unique_id=1845125114]
+layout_mode = 1
+anchors_preset = 15
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = 36.0
+offset_right = -40.0
+offset_bottom = -36.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 18
+
+[node name="CreateLobbyMenu1" type="HBoxContainer" parent="Game/UI/OnlineMenu/Container" unique_id=1223922688]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="MinPlayersLabel" type="Label" parent="Game/UI/OnlineMenu/Container/CreateLobbyMenu1" unique_id=1677443846]
+layout_mode = 2
+size_flags_vertical = 4
+text = "Min players"
+
+[node name="MinPlayersField" type="LineEdit" parent="Game/UI/OnlineMenu/Container/CreateLobbyMenu1" unique_id=513145403]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+focus_neighbor_right = NodePath("../MaxPlayersField")
+text = "1"
+alignment = 1
+max_length = 1
+context_menu_enabled = false
+emoji_menu_enabled = false
+shortcut_keys_enabled = false
+middle_mouse_paste_enabled = false
+selecting_enabled = false
+drag_and_drop_selection_enabled = false
+
+[node name="MaxPlayersLabel" type="Label" parent="Game/UI/OnlineMenu/Container/CreateLobbyMenu1" unique_id=1920602252]
+layout_mode = 2
+size_flags_vertical = 4
+text = "Max"
+
+[node name="MaxPlayersField" type="LineEdit" parent="Game/UI/OnlineMenu/Container/CreateLobbyMenu1" unique_id=754789239]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+focus_neighbor_left = NodePath("../MinPlayersField")
+text = "1"
+alignment = 1
+max_length = 1
+context_menu_enabled = false
+emoji_menu_enabled = false
+shortcut_keys_enabled = false
+middle_mouse_paste_enabled = false
+selecting_enabled = false
+drag_and_drop_selection_enabled = false
+
+[node name="CreateLobbyMenu2" type="HBoxContainer" parent="Game/UI/OnlineMenu/Container" unique_id=900667943]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="LobbyNameField" type="LineEdit" parent="Game/UI/OnlineMenu/Container/CreateLobbyMenu2" unique_id=1763056419]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Lobby name"
+alignment = 1
+max_length = 20
+backspace_deletes_composite_character_enabled = true
+
+[node name="CreateButton" type="Button" parent="Game/UI/OnlineMenu/Container/CreateLobbyMenu2" unique_id=3380370]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+size_flags_horizontal = 8
+text = "Create lobby"
+
+[node name="LobbiesList" type="Tree" parent="Game/UI/OnlineMenu/Container" unique_id=975235838]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/title_button_normal = SubResource("StyleBoxEmpty_y0s6v")
+theme_override_styles/title_button_pressed = SubResource("StyleBoxEmpty_avk8s")
+theme_override_styles/title_button_hover = SubResource("StyleBoxEmpty_u1o2k")
+columns = 7
+column_titles_visible = true
+hide_folding = true
+enable_recursive_folding = false
+enable_drag_unfolding = false
+hide_root = true
+select_mode = 1
+auto_tooltip = false
+scroll_horizontal_enabled = false
+
+[node name="CreateLobbyMenu3" type="HBoxContainer" parent="Game/UI/OnlineMenu/Container" unique_id=58274957]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="RefreshListButton" type="Button" parent="Game/UI/OnlineMenu/Container/CreateLobbyMenu3" unique_id=920269230]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Refresh list"
+
+[node name="JoinButton" type="Button" parent="Game/UI/OnlineMenu/Container/CreateLobbyMenu3" unique_id=142951911]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Join selected"
+
+[node name="PlayerOptions" type="HBoxContainer" parent="Game/UI/OnlineMenu/Container" unique_id=1930521745]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="NicknameField" type="LineEdit" parent="Game/UI/OnlineMenu/Container/PlayerOptions" unique_id=174776782]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Your nickname"
+alignment = 1
+max_length = 20
+
+[node name="ColorPickerButton" type="Button" parent="Game/UI/OnlineMenu/Container/PlayerOptions" unique_id=835611679]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Pick your car color"
+
+[node name="ColorPickerPanel" type="Panel" parent="Game/UI" unique_id=1514108191]
+visible = false
+custom_minimum_size = Vector2(320, 320)
+layout_mode = 0
+offset_left = 617.0
+offset_top = 178.0
+offset_right = 937.0
+offset_bottom = 498.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_8rs83")
+
+[node name="ColorPicker" type="ColorPicker" parent="Game/UI/ColorPickerPanel" unique_id=1842348575]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -149.0
+offset_top = -151.0
+offset_right = 149.0
+offset_bottom = 151.0
+grow_horizontal = 2
+grow_vertical = 2
+edit_alpha = false
+edit_intensity = false
+sampler_visible = false
+color_modes_visible = false
+sliders_visible = false
+presets_visible = false
+
+[node name="IntermissionMenu" type="Panel" parent="Game/UI" unique_id=206048886]
+visible = false
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.18
+anchor_top = 0.08
+anchor_right = 0.82
+anchor_bottom = 0.92
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_intermission")
+
+[node name="Container" type="VBoxContainer" parent="Game/UI/IntermissionMenu" unique_id=700100100]
+layout_mode = 1
+anchors_preset = 15
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 36.0
+offset_top = 28.0
+offset_right = -36.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+
+[node name="LobbyName" type="Label" parent="Game/UI/IntermissionMenu/Container" unique_id=355730984]
+layout_mode = 2
+text = "Lobbyname"
+label_settings = SubResource("LabelSettings_lobby_title")
+horizontal_alignment = 1
+
+[node name="CurrentTrackname" type="Label" parent="Game/UI/IntermissionMenu/Container" unique_id=1606305829]
+layout_mode = 2
+text = "Trackname"
+label_settings = SubResource("LabelSettings_track_sub")
+horizontal_alignment = 1
+
+[node name="HeaderSep" type="HSeparator" parent="Game/UI/IntermissionMenu/Container" unique_id=700100101]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PilotsHeader" type="Label" parent="Game/UI/IntermissionMenu/Container" unique_id=700100102]
+layout_mode = 2
+text = "— PILOTS —"
+label_settings = SubResource("LabelSettings_pilots_header")
+horizontal_alignment = 1
+
+[node name="Control" type="ScrollContainer" parent="Game/UI/IntermissionMenu/Container" unique_id=174838396]
+custom_minimum_size = Vector2(0, 280)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="PlayersInLobby" type="VBoxContainer" parent="Game/UI/IntermissionMenu/Container/Control" unique_id=1331463627]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="PlayersCount" type="Label" parent="Game/UI/IntermissionMenu/Container" unique_id=956375012]
+layout_mode = 2
+text = "Players count"
+label_settings = SubResource("LabelSettings_players_count")
+horizontal_alignment = 1
+
+[node name="FooterSep" type="HSeparator" parent="Game/UI/IntermissionMenu/Container" unique_id=700100103]
+layout_mode = 2
+
+[node name="CountdownLabel" type="Label" parent="Game/UI/IntermissionMenu/Container" unique_id=79486557]
+layout_mode = 2
+text = ""
+label_settings = SubResource("LabelSettings_countdown")
+horizontal_alignment = 1
+
+[node name="BackButton" type="Button" parent="Game/UI/IntermissionMenu/Container" unique_id=329240496]
+custom_minimum_size = Vector2(280, 56)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 8
+focus_behavior_recursive = 2
+text = "Back to online menu"
+
+[node name="PlayMenuPanel" type="Panel" parent="Game/UI" unique_id=648314024]
+visible = false
+custom_minimum_size = Vector2(225, 108)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -112.0
+offset_top = -54.0
+offset_right = 112.0
+offset_bottom = 54.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_30hyq")
+
+[node name="PlayMenu" type="VBoxContainer" parent="Game/UI/PlayMenuPanel" unique_id=634902162]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -75.0
+offset_top = -33.0
+offset_right = 75.0
+offset_bottom = 33.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BackToRaceButton" type="Button" parent="Game/UI/PlayMenuPanel/PlayMenu" unique_id=1169749013]
+custom_minimum_size = Vector2(210, 35)
+layout_mode = 2
+size_flags_vertical = 3
+text = "Back to race"
+
+[node name="LeaveButton" type="Button" parent="Game/UI/PlayMenuPanel/PlayMenu" unique_id=1062109794]
+custom_minimum_size = Vector2(150, 35)
+layout_mode = 2
+size_flags_vertical = 3
+text = "Leave"
+
+[node name="DriftBar" type="Control" parent="Game/UI" unique_id=700000002]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("6_driftbar")
+
+[node name="StartLights" type="Control" parent="Game/UI" unique_id=700000003]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.76
+anchor_right = 0.5
+anchor_bottom = 0.76
+offset_left = -200.0
+offset_top = -50.0
+offset_right = 200.0
+offset_bottom = 50.0
+mouse_filter = 2
+script = ExtResource("7_startlights")
+
+[node name="Dong" type="AudioStreamPlayer" parent="Game/UI/StartLights" unique_id=700000004]
+volume_db = -2.0
+
+[node name="Ding" type="AudioStreamPlayer" parent="Game/UI/StartLights" unique_id=700000005]
+volume_db = 0.0
+
+[connection signal="text_changed" from="Game/UI/OnlineMenu/Container/CreateLobbyMenu1/MinPlayersField" to="Game/UI" method="_on_min_players_field_text_changed"]
+[connection signal="text_changed" from="Game/UI/OnlineMenu/Container/CreateLobbyMenu1/MaxPlayersField" to="Game/UI" method="_on_max_players_field_text_changed"]
+[connection signal="text_changed" from="Game/UI/OnlineMenu/Container/CreateLobbyMenu2/LobbyNameField" to="Game/UI" method="_on_lobby_name_field_text_changed"]
+[connection signal="pressed" from="Game/UI/OnlineMenu/Container/CreateLobbyMenu2/CreateButton" to="Game/UI" method="_on_create_button_pressed"]
+[connection signal="pressed" from="Game/UI/OnlineMenu/Container/CreateLobbyMenu3/RefreshListButton" to="Game/UI" method="_on_refresh_list_button_pressed"]
+[connection signal="pressed" from="Game/UI/OnlineMenu/Container/CreateLobbyMenu3/JoinButton" to="Game/UI" method="_on_join_button_pressed"]
+[connection signal="pressed" from="Game/UI/OnlineMenu/Container/PlayerOptions/ColorPickerButton" to="Game/UI" method="_on_button_pressed"]
+[connection signal="color_changed" from="Game/UI/ColorPickerPanel/ColorPicker" to="Game/UI" method="_on_color_picker_color_changed"]
+[connection signal="visibility_changed" from="Game/UI/ColorPickerPanel/ColorPicker" to="Game/UI" method="_on_color_picker_visibility_changed"]
+[connection signal="pressed" from="Game/UI/IntermissionMenu/Container/BackButton" to="Game/UI" method="_on_back_button_pressed"]
+[connection signal="pressed" from="Game/UI/PlayMenuPanel/PlayMenu/BackToRaceButton" to="Game/UI" method="_on_back_to_race_pressed"]
+[connection signal="pressed" from="Game/UI/PlayMenuPanel/PlayMenu/LeaveButton" to="Game/UI" method="_on_leave_pressed"]
