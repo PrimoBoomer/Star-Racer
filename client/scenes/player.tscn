@@ -1,0 +1,57 @@
+[gd_scene format=3 uid="uid://ci8rakxld2jn4"]
+
+[ext_resource type="Script" uid="uid://2enfooltbgot" path="res://scripts/player.gd" id="1_g2els"]
+[ext_resource type="Material" uid="uid://dyaujup24015c" path="res://tracks/circuit_one/floor_mat.tres" id="2_dqkch"]
+[ext_resource type="Script" uid="uid://0g1xtup3ydqf" path="res://scripts/camera.gd" id="3_dqkch"]
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_car"]
+friction = 0.0
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_v0iea"]
+size = Vector3(3.5, 2.8, 4.4)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_wqo35"]
+material = ExtResource("2_dqkch")
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_8tj53"]
+material = ExtResource("2_dqkch")
+
+[node name="Car" type="RigidBody3D" unique_id=911942295]
+mass = 1000.0
+physics_material_override = SubResource("PhysicsMaterial_car")
+script = ExtResource("1_g2els")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=549238354]
+shape = SubResource("BoxShape3D_v0iea")
+
+[node name="Body" type="MeshInstance3D" parent="." unique_id=880295020]
+transform = Transform3D(2, -1.4565557e-09, -3.2717108e-07, -3.2425856e-07, 0.25759053, -1.9833423, 4.358253e-08, 1.9833423, 0.25759053, 0, 0, 0)
+mesh = SubResource("CapsuleMesh_wqo35")
+
+[node name="WheelFixedLeft" type="MeshInstance3D" parent="." unique_id=702103095]
+transform = Transform3D(-9.102817e-08, 0.41649625, -9.10282e-08, -3.5762787e-07, -1.8205633e-08, -2.082481, -2.082481, -1.8205633e-08, 3.5762787e-07, -1.246605, -0.36948955, 1.3248538)
+mesh = SubResource("CylinderMesh_8tj53")
+
+[node name="WheelFixedRight" type="MeshInstance3D" parent="." unique_id=836063252]
+transform = Transform3D(2.4833328e-08, 0.41649625, -9.102811e-08, 0, -1.8205625e-08, -2.082481, -2.082481, 4.9666617e-09, 0, 1.2568787, -0.36948952, 1.3248534)
+mesh = SubResource("CylinderMesh_8tj53")
+
+[node name="WheelTurnLeft" type="MeshInstance3D" parent="." unique_id=99737819]
+unique_name_in_owner = true
+transform = Transform3D(-6.068542e-08, 0.27766415, 0, -1.3883207, -1.2137086e-08, 0, 0, 0, 1.3883207, -1.2774307, -0.6954333, -1.3726466)
+mesh = SubResource("CylinderMesh_8tj53")
+
+[node name="WheelTurnRight" type="MeshInstance3D" parent="." unique_id=1756203209]
+unique_name_in_owner = true
+transform = Transform3D(-6.068542e-08, 0.27766415, 0, -1.3883207, -1.2137086e-08, 0, 0, 0, 1.3883207, 1.277429, -0.6954334, -1.372633)
+mesh = SubResource("CylinderMesh_8tj53")
+
+[node name="Forward" type="Node3D" parent="." unique_id=577425519]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3)
+
+[node name="Camera" type="Camera3D" parent="." unique_id=2113304178]
+transform = Transform3D(1, -2.9652021e-08, -2.3902825e-07, 1.4519352e-07, 0.86602545, 0.49999997, 1.9217853e-07, -0.49999997, 0.86602545, 0, 3.9535747, 3.7251148)
+fov = 90.0
+script = ExtResource("3_dqkch")
+
