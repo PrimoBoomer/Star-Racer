@@ -12,8 +12,10 @@ ClientDir="$RepoRoot/Client"
 GODOT_BIN="${GODOT:-godot}"
 
 CARGO_PROFILE_FLAG=""
+TARGET="debug"
 if [[ "${1:-}" == "--release" ]]; then
     CARGO_PROFILE_FLAG="--release"
+    TARGET="release"
 fi
 
 pids=()
@@ -30,8 +32,11 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+echo "[run-all] Building binaries…"
+( cd "$ServerDir" && cargo build $CARGO_PROFILE_FLAG --bin server --bin bots )
+
 echo "[run-all] Starting server…"
-( cd "$ServerDir" && cargo run $CARGO_PROFILE_FLAG --bin server ) &
+"$ServerDir/target/$TARGET/server" &
 pids+=($!)
 
 echo "[run-all] Waiting for server on ws://localhost:8080…"
@@ -43,7 +48,7 @@ for _ in $(seq 1 120); do
 done
 
 echo "[run-all] Starting bots…"
-( cd "$ServerDir" && cargo run $CARGO_PROFILE_FLAG --bin bots ) &
+"$ServerDir/target/$TARGET/bots" &
 pids+=($!)
 
 echo "[run-all] Starting Godot client ($GODOT_BIN)…"

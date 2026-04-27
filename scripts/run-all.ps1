@@ -14,12 +14,9 @@ $ServerDir = Join-Path $RepoRoot 'Server'
 $ClientDir = Join-Path $RepoRoot 'Client'
 $GodotBin  = if ($env:GODOT) { $env:GODOT } else { 'godot' }
 
-$cargoArgs = @('run', '--bin', 'server')
-$botsArgs  = @('run', '--bin', 'bots')
-if ($Release) {
-    $cargoArgs = @('run', '--release', '--bin', 'server')
-    $botsArgs  = @('run', '--release', '--bin', 'bots')
-}
+$target    = if ($Release) { 'release' } else { 'debug' }
+$buildArgs = if ($Release) { @('build', '--release', '--bin', 'server', '--bin', 'bots') } `
+                      else { @('build', '--bin', 'server', '--bin', 'bots') }
 
 $procs = @()
 
@@ -33,8 +30,13 @@ function Stop-All {
 }
 
 try {
+    Write-Host "[run-all] Building binaries…"
+    Push-Location $ServerDir
+    try { & cargo @buildArgs } finally { Pop-Location }
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
     Write-Host "[run-all] Starting server…"
-    $procs += Start-Process -FilePath 'cargo' -ArgumentList $cargoArgs `
+    $procs += Start-Process -FilePath "$ServerDir\target\$target\server.exe" `
         -WorkingDirectory $ServerDir -PassThru -NoNewWindow
 
     Write-Host "[run-all] Waiting for server on ws://localhost:8080…"
@@ -53,7 +55,7 @@ try {
     }
 
     Write-Host "[run-all] Starting bots…"
-    $procs += Start-Process -FilePath 'cargo' -ArgumentList $botsArgs `
+    $procs += Start-Process -FilePath "$ServerDir\target\$target\bots.exe" `
         -WorkingDirectory $ServerDir -PassThru -NoNewWindow
 
     Write-Host "[run-all] Starting Godot client ($GodotBin)…"

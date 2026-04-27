@@ -24,7 +24,9 @@ var _server_pos_valid := false
 var _server_rot       := Quaternion.IDENTITY
 var _server_rot_valid := false
 
-@onready var init_rot_wheel: float = %WheelTurnLeft.rotation_degrees.y
+@onready var _wheel_fl: Node3D = $Body.get_node("wheel-front-left")
+@onready var _wheel_fr: Node3D = $Body.get_node("wheel-front-right")
+@onready var init_rot_wheel: float = _wheel_fl.rotation_degrees.y
 var delta_rot_wheel := 0.0
 const LIMIT_ROT_WHEEL := 30.0
 
@@ -37,8 +39,6 @@ const NETWORK_SEND_INTERVAL := 0.05
 func _ready() -> void:
 	self.angular_damp = 0.5
 	self.linear_damp  = NORMAL_LINEAR_DAMP
-	self.axis_lock_angular_x = true
-	self.axis_lock_angular_z = true
 
 func _physics_process(delta: float) -> void:
 	if self._game.mode != Game.Mode.IN_RACE \
@@ -103,8 +103,8 @@ func _physics_process(delta: float) -> void:
 		self.delta_rot_wheel = clamp(self.delta_rot_wheel, -LIMIT_ROT_WHEEL, LIMIT_ROT_WHEEL)
 	else:
 		self.delta_rot_wheel = lerp(self.delta_rot_wheel, 0.0, delta * 10)
-	%WheelTurnLeft.rotation_degrees.y  = self.init_rot_wheel + self.delta_rot_wheel
-	%WheelTurnRight.rotation_degrees.y = self.init_rot_wheel + self.delta_rot_wheel
+	_wheel_fl.rotation_degrees.y = self.init_rot_wheel + self.delta_rot_wheel
+	_wheel_fr.rotation_degrees.y = self.init_rot_wheel + self.delta_rot_wheel
 
 	self.network_timer += delta
 	if self.network_timer >= NETWORK_SEND_INTERVAL:

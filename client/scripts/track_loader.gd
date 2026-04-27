@@ -109,7 +109,7 @@ static func _make_pad(parent: Node3D, prim: Dictionary) -> void:
 
 	var pad_mi := MeshInstance3D.new()
 	pad_mi.mesh = pad_mesh
-	pad_mi.position.y = size.y * 0.5 + 0.02
+	pad_mi.position.y = -size.y * 0.5 + 0.02
 	root.add_child(pad_mi)
 
 	# Direction arrow.
@@ -126,7 +126,7 @@ static func _make_pad(parent: Node3D, prim: Dictionary) -> void:
 	head_mesh.material = arrow_mat
 
 	var arrow := Node3D.new()
-	arrow.position.y = size.y * 0.5 + 0.06
+	arrow.position.y = -size.y * 0.5 + 0.06
 	arrow.rotation.y = atan2(heading.x, -heading.z)
 	root.add_child(arrow)
 
