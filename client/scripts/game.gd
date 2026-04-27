@@ -390,8 +390,8 @@ func switch_to_track(track_id: int, race_ongoing: bool):
 	self.car_node = self.player_scene.instantiate()
 	var mat = StandardMaterial3D.new()
 	mat.albedo_color = %UI.get_car_color()
-	for mesh_name in ["Body", "WheelFixedLeft", "WheelFixedRight", "WheelTurnLeft", "WheelTurnRight"]:
-		(self.car_node.get_node(mesh_name) as MeshInstance3D).set_surface_override_material(0, mat)
+	for mesh in self.car_node.find_children("*", "MeshInstance3D", true, false):
+		(mesh as MeshInstance3D).set_surface_override_material(0, mat)
 	self.car_node.name = %UI.get_nickname()
 	$Track.add_child(self.car_node)
 
