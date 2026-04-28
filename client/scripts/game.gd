@@ -20,12 +20,12 @@ const CAR_MODELS = [
 static func get_car_model(model_id: String) -> Dictionary:
 	for m in CAR_MODELS:
 		if m["id"] == model_id:
-			var def := m.duplicate()
+			var def: Dictionary = m.duplicate()
 			match model_id:
 				"sport", "classic":
-					def["transform"] = Transform3D(-3.5, 0, 0, 0, 3.5, 0, 0, 0, -3.5, -1.22, -0.58, -2.32)
+					def["transform"] = Transform3D(Vector3(-3.5, 0, 0), Vector3(0, 3.5, 0), Vector3(0, 0, -3.5), Vector3(-1.22, -0.58, -2.32))
 				"future":
-					def["transform"] = Transform3D(-2.0, 0, 0, 0, 2.0, 0, 0, 0, -2.0, 0.0, -0.634, 0.0)
+					def["transform"] = Transform3D(Vector3(-2.0, 0, 0), Vector3(0, 2.0, 0), Vector3(0, 0, -2.0), Vector3(0.0, -0.634, 0.0))
 			return def
 	return get_car_model("sport")
 
