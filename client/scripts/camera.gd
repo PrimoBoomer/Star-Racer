@@ -39,6 +39,11 @@ func _process(delta: float) -> void:
 		self._ready_snap = false
 		return
 
+	if Input.is_action_pressed("Back View"):
+		_snap_to_car_back()
+		self._ready_snap = true
+		return
+
 	_tick_orbital(delta)
 	_tick_yaw(delta)
 	_tick_position(delta)
@@ -55,6 +60,16 @@ func _snap_to_car() -> void:
 	self.fov = FOV_BASE
 	if self._cam_pos.distance_to(self._look_target) > 0.1:
 		look_at(self._look_target, Vector3.UP)
+
+func _snap_to_car_back() -> void:
+	var yaw := self._car.global_rotation.y + PI
+	var behind := Vector3(sin(yaw), 0.0, cos(yaw)) * FOLLOW_DIST
+	var pos := self._car.global_position + behind + Vector3(0.0, FOLLOW_HEIGHT, 0.0)
+	var look := self._car.global_position + Vector3(0.0, LOOK_HEIGHT, 0.0)
+	self.global_position = pos
+	self.fov = FOV_BASE
+	if pos.distance_to(look) > 0.1:
+		look_at(look, Vector3.UP)
 
 func _tick_orbital(delta: float) -> void:
 	var sx := Input.get_axis("View Left", "View Right")

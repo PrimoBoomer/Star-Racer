@@ -38,7 +38,7 @@ async fn main() -> anyhow::Result<()> {
     log_init();
     raise_timer_resolution();
 
-    let raw = include_str!("../../tracks/circuit_one.json");
+    let raw = include_str!("../../tracks/circuit_two.json");
     let track = Arc::new(TrackDef::from_json(raw)?);
 
     star_racer_server::run::run(8080, track).await?;

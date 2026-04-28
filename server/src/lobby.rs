@@ -15,8 +15,8 @@ use rapier3d_f64::{
     prelude::{
         ActiveEvents, BroadPhaseBvh, CCDSolver, ChannelEventCollector, ColliderBuilder, ColliderHandle, ColliderSet,
         CollisionEvent, ContactForceEvent, Group, ImpulseJointSet, IntegrationParameters, InteractionGroups,
-        InteractionTestMode, IslandManager, MultibodyJointSet, NarrowPhase, PhysicsPipeline, RigidBodyBuilder,
-        RigidBodyHandle, RigidBodySet,
+        InteractionTestMode, IslandManager, MassProperties, MultibodyJointSet, NarrowPhase, PhysicsPipeline,
+        RigidBodyBuilder, RigidBodyHandle, RigidBodySet,
     },
 };
 use std::{collections::HashMap, sync::mpsc::Receiver, sync::Arc};
@@ -100,13 +100,16 @@ impl PhysicsWorld {
     fn insert_body(&mut self, pos: Vec3Proto) -> RigidBodyHandle {
         let rb = RigidBodyBuilder::dynamic()
             .translation(Vec3::new(pos.x, pos.y, pos.z))
-            .enabled_rotations(false, true, false)
             .linear_damping(NORMAL_LINEAR_DAMPING)
             .angular_damping(0.5)
             .build();
         let handle = self.rigid_body_set.insert(rb);
-        let collider = ColliderBuilder::cuboid(1.75, 1.4, 2.2)
-            .density(23.19)
+        let collider = ColliderBuilder::cuboid(1.3, 0.6, 2.4)
+            .mass_properties(MassProperties::new(
+                Vec3::new(0.0, -0.4, 0.0),
+                1000.0,
+                Vec3::new(2040.0, 2483.0, 683.0),
+            ))
             .friction(0.0)
             .collision_groups(CAR_COLLISION)
             .active_events(ActiveEvents::COLLISION_EVENTS)
