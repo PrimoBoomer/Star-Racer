@@ -16,14 +16,17 @@ const HAZARD_DEFAULT_COLOR := Color(0.85, 0.15, 0.15)
 
 
 static func build(parent: Node3D, track_def: Dictionary) -> Dictionary:
+	var floor_mat: StandardMaterial3D = load("res://tracks/circuit_one/floor_mat.tres")
+	var wall_mat := _make_concrete_mat()
+
 	var primitives: Array = track_def.get("primitives", [])
 	for prim in primitives:
 		var kind: String = prim.get("type", "")
 		match kind:
 			"floor":
-				_make_static_box(parent, prim, FLOOR_DEFAULT_COLOR, false)
+				_make_static_box(parent, prim, FLOOR_DEFAULT_COLOR, false, floor_mat)
 			"wall":
-				_make_static_box(parent, prim, WALL_DEFAULT_COLOR, false)
+				_make_static_box(parent, prim, WALL_DEFAULT_COLOR, false, wall_mat)
 			"hazard":
 				_make_static_box(parent, prim, HAZARD_DEFAULT_COLOR, true)
 			"pad":
@@ -51,7 +54,17 @@ static func _color_from_array(arr, default: Color) -> Color:
 	return Color(float(arr[0]), float(arr[1]), float(arr[2]))
 
 
-static func _make_static_box(parent: Node3D, prim: Dictionary, default_color: Color, sensor: bool) -> void:
+static func _make_concrete_mat() -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = load("res://tracks/circuit_one/concrete_color.png")
+	mat.normal_enabled = true
+	mat.normal_texture = load("res://tracks/circuit_one/concrete_normal.png")
+	mat.roughness = 0.9
+	mat.uv1_scale = Vector3(3.0, 3.0, 3.0)
+	return mat
+
+
+static func _make_static_box(parent: Node3D, prim: Dictionary, default_color: Color, sensor: bool, override_mat: StandardMaterial3D = null) -> void:
 	var size := _vec3_from_array(prim.get("size", []))
 	var pos  := _vec3_from_array(prim.get("position", []))
 	var rot  := _vec3_from_array(prim.get("rotation_deg", []), Vector3.ZERO)
@@ -70,11 +83,14 @@ static func _make_static_box(parent: Node3D, prim: Dictionary, default_color: Co
 	var mi := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
 	mesh.size = size
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.roughness = 0.8
-	mat.metallic = 0.1
-	mesh.material = mat
+	if override_mat != null:
+		mesh.material = override_mat
+	else:
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = color
+		mat.roughness = 0.8
+		mat.metallic = 0.1
+		mesh.material = mat
 	mi.mesh = mesh
 	body.add_child(mi)
 

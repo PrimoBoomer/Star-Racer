@@ -17,3 +17,12 @@ Godot addons (debug_draw_3d, godot-rapier3d) are not committed. Fetch them once 
 Versions are pinned in [scripts/addons.lock](scripts/addons.lock).
 
 Created by Claude AI
+
+## Credits
+
+All third-party assets are CC0 (public domain).
+
+| Asset | Source | License |
+|---|---|---|
+| Car models (`kenney_race_car.glb`, `race_car_red.glb`, `race-future.glb`) | [Kenney Racing Kit](https://kenney.nl/assets/racing-kit) — kenney.nl | CC0 |
+| Wall concrete texture (`concrete_color.png`, `concrete_normal.png`) | [Concrete012 — ambientCG](https://ambientcg.com/view?id=Concrete012) — ambientcg.com | CC0 |

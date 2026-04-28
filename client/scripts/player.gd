@@ -24,11 +24,13 @@ var _server_pos_valid := false
 var _server_rot       := Quaternion.IDENTITY
 var _server_rot_valid := false
 
-@onready var _wheel_fl: Node3D = $Body.get_node("wheel-front-left")
-@onready var _wheel_fr: Node3D = $Body.get_node("wheel-front-right")
-@onready var init_rot_wheel: float = _wheel_fl.rotation_degrees.y
+var _wheel_fl: Node3D = null
+var _wheel_fr: Node3D = null
+var init_rot_wheel: float = 0.0
 var delta_rot_wheel := 0.0
 const LIMIT_ROT_WHEEL := 30.0
+
+var car_model_id: String = "sport"
 
 var network_timer := 0.0
 const NETWORK_SEND_INTERVAL := 0.05
@@ -39,6 +41,21 @@ const NETWORK_SEND_INTERVAL := 0.05
 func _ready() -> void:
 	self.angular_damp = 0.5
 	self.linear_damp  = NORMAL_LINEAR_DAMP
+	_load_car_body()
+
+func _load_car_body() -> void:
+	var model_def := Game.get_car_model(car_model_id)
+	var scene := load(model_def["path"]) as PackedScene
+	if scene == null:
+		printerr("Could not load car model: ", model_def["path"])
+		return
+	var body := scene.instantiate() as Node3D
+	body.name = "Body"
+	body.transform = model_def["transform"]
+	add_child(body)
+	_wheel_fl = body.find_child(model_def["wheel_fl"], true, false)
+	_wheel_fr = body.find_child(model_def["wheel_fr"], true, false)
+	init_rot_wheel = _wheel_fl.rotation_degrees.y if _wheel_fl else 0.0
 
 func _physics_process(delta: float) -> void:
 	if self._game.mode != Game.Mode.IN_RACE \
@@ -103,8 +120,10 @@ func _physics_process(delta: float) -> void:
 		self.delta_rot_wheel = clamp(self.delta_rot_wheel, -LIMIT_ROT_WHEEL, LIMIT_ROT_WHEEL)
 	else:
 		self.delta_rot_wheel = lerp(self.delta_rot_wheel, 0.0, delta * 10)
-	_wheel_fl.rotation_degrees.y = self.init_rot_wheel + self.delta_rot_wheel
-	_wheel_fr.rotation_degrees.y = self.init_rot_wheel + self.delta_rot_wheel
+	if _wheel_fl:
+		_wheel_fl.rotation_degrees.y = self.init_rot_wheel + self.delta_rot_wheel
+	if _wheel_fr:
+		_wheel_fr.rotation_degrees.y = self.init_rot_wheel + self.delta_rot_wheel
 
 	self.network_timer += delta
 	if self.network_timer >= NETWORK_SEND_INTERVAL:

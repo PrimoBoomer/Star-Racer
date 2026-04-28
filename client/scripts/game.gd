@@ -2,6 +2,33 @@ extends Node
 
 class_name Game
 
+const CAR_MODELS = [
+	{"id": "sport",   "name": "Sport",
+	 "path": "res://assets/models/kenney_race_car.glb",
+	 "wheel_fl": "wheelFrontLeft",   "wheel_fr": "wheelFrontRight",
+	 "body_mesh": "body"},
+	{"id": "classic", "name": "Classic",
+	 "path": "res://assets/models/race_car_red.glb",
+	 "wheel_fl": "wheelFrontLeft",   "wheel_fr": "wheelFrontRight",
+	 "body_mesh": "body"},
+	{"id": "future",  "name": "Future",
+	 "path": "res://assets/models/race-future.glb",
+	 "wheel_fl": "wheel-front-left", "wheel_fr": "wheel-front-right",
+	 "body_mesh": "body"},
+]
+
+static func get_car_model(model_id: String) -> Dictionary:
+	for m in CAR_MODELS:
+		if m["id"] == model_id:
+			var def := m.duplicate()
+			match model_id:
+				"sport", "classic":
+					def["transform"] = Transform3D(-3.5, 0, 0, 0, 3.5, 0, 0, 0, -3.5, -1.22, -0.58, -2.32)
+				"future":
+					def["transform"] = Transform3D(-2.0, 0, 0, 0, 2.0, 0, 0, 0, -2.0, 0.0, -0.634, 0.0)
+			return def
+	return get_car_model("sport")
+
 enum Mode {
 	WELCOME_PAGE,
 	FETCH_LOBBIES,
@@ -162,25 +189,31 @@ class GhostManager:
 
 class OpponentManager:
 	var _track: Node3D
-	var _opponent_scene: PackedScene
-
 	var _states: Dictionary = {}
 
-	func _init(track: Node3D, scene: PackedScene) -> void:
+	func _init(track: Node3D) -> void:
 		self._track = track
-		self._opponent_scene = scene
 
 	func update(player: Dictionary) -> void:
 		var nickname: String = player["nickname"]
 		var now := Time.get_ticks_msec() * 0.001
 
 		if nickname not in self._states:
-			var node: Node3D = self._opponent_scene.instantiate() as Node3D
-			node.name = nickname
-			var mat = StandardMaterial3D.new()
+			var rng := RandomNumberGenerator.new()
+			rng.seed = nickname.hash()
+			var rand_m = Game.CAR_MODELS[rng.randi() % Game.CAR_MODELS.size()]
+			var model_def = Game.get_car_model(rand_m["id"])
+			var model_scene := load(model_def["path"]) as PackedScene
+			var model_node := model_scene.instantiate() as Node3D
+			model_node.transform = model_def["transform"]
+			var mat := StandardMaterial3D.new()
 			mat.albedo_color = player["color"]
-			for mesh_name in ["Body", "WheelFixedLeft", "WheelFixedRight", "WheelTurnLeft", "WheelTurnRight"]:
-				(node.get_node(mesh_name) as MeshInstance3D).set_surface_override_material(0, mat)
+			var body_mesh := model_node.find_child(model_def["body_mesh"], true, false) as MeshInstance3D
+			if body_mesh:
+				body_mesh.set_surface_override_material(0, mat)
+			var node := Node3D.new()
+			node.name = nickname
+			node.add_child(model_node)
 			self._track.add_child(node, true)
 
 			node.position = player["position"]
@@ -283,6 +316,7 @@ func _save_settings() -> void:
 	if check_nickname(%UI.get_nickname()):
 		config.set_value("Settings", "nickname", %UI.get_nickname())
 	config.set_value("Settings", "car_color", %UI.get_car_color())
+	config.set_value("Settings", "car_model_id", %UI.get_car_model_id())
 	config.save("user://settings.cfg")
 
 func _load_settings() -> void:
@@ -297,6 +331,7 @@ func _load_settings() -> void:
 	%UI.set_nickname(config.get_value("Settings", "nickname", NameGenerator.nickname()))
 	var c_arr = config.get_value("Settings", "car_color", self.COLOR_DEFAULT)
 	%UI.set_car_color(Color(c_arr[0], c_arr[1], c_arr[2]))
+	%UI.set_car_model_id(config.get_value("Settings", "car_model_id", "sport"))
 
 func check_min_players(value: int) -> bool:
 	return value >= self.MIN_LIMIT_PLAYERS and value <= self.MAX_LIMIT_PLAYERS and value <= %UI.get_max_players()
@@ -385,15 +420,18 @@ func switch_to_track(track_id: int, race_ongoing: bool):
 	var physical_node: Node3D = self.track_node.get_node("Physical") as Node3D
 	var spawn_info: Dictionary = TrackLoader.build(physical_node, self.track_def)
 
-	self._opponents = OpponentManager.new($Track, self.opponent_scene)
+	self._opponents = OpponentManager.new($Track)
 
 	self.car_node = self.player_scene.instantiate()
-	var mat = StandardMaterial3D.new()
-	mat.albedo_color = %UI.get_car_color()
-	for mesh in self.car_node.find_children("*", "MeshInstance3D", true, false):
-		(mesh as MeshInstance3D).set_surface_override_material(0, mat)
+	self.car_node.car_model_id = %UI.get_car_model_id()
 	self.car_node.name = %UI.get_nickname()
 	$Track.add_child(self.car_node)
+	var model_def := get_car_model(%UI.get_car_model_id())
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = %UI.get_car_color()
+	var body_mesh := self.car_node.find_child(model_def["body_mesh"], true, false) as MeshInstance3D
+	if body_mesh:
+		body_mesh.set_surface_override_material(0, mat)
 
 	self.car_node.global_position = spawn_info["spawn_pos"]
 	self.car_node.global_rotation = Vector3(0.0, deg_to_rad(spawn_info["spawn_y_rotation_deg"]), 0.0)

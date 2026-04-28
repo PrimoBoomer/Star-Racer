@@ -34,6 +34,13 @@ var tree_root: TreeItem
 
 var bindings_label: Label
 
+var _car_model_idx: int = 0
+var _car_model_button: Button = null
+var _car_model_label: Label = null
+var _car_preview_panel: Panel = null
+var _car_preview_viewport: SubViewport = null
+var _car_preview_node: Node3D = null
+
 func _ready() -> void:
 	self.lobbies_list.set_column_title(0, "Name");
 	self.lobbies_list.set_column_title(1, "Owner");
@@ -50,6 +57,138 @@ func _ready() -> void:
 	self.bindings_label.add_theme_constant_override("outline_size", 4)
 	self.bindings_label.visible = false
 	add_child(self.bindings_label)
+
+	_setup_car_model_picker()
+	_setup_car_preview_panel()
+
+func _setup_car_model_picker() -> void:
+	var player_options := $OnlineMenu/Container/PlayerOptions as HBoxContainer
+
+	_car_model_button = Button.new()
+	_car_model_button.text = "Pick car model"
+	_car_model_button.size_flags_horizontal = SIZE_EXPAND_FILL
+	_car_model_button.pressed.connect(_on_car_model_button_pressed)
+	player_options.add_child(_car_model_button)
+
+func _setup_car_preview_panel() -> void:
+	_car_preview_panel = Panel.new()
+	_car_preview_panel.visible = false
+	_car_preview_panel.custom_minimum_size = Vector2(300, 290)
+	_car_preview_panel.layout_mode = 0
+	_car_preview_panel.offset_left = 280.0
+	_car_preview_panel.offset_top = 178.0
+	_car_preview_panel.offset_right = 580.0
+	_car_preview_panel.offset_bottom = 468.0
+
+	var vbox := VBoxContainer.new()
+	vbox.set_anchor(SIDE_LEFT, 0); vbox.set_anchor(SIDE_RIGHT, 1)
+	vbox.set_anchor(SIDE_TOP, 0);  vbox.set_anchor(SIDE_BOTTOM, 1)
+	vbox.offset_left = 8; vbox.offset_right = -8
+	vbox.offset_top = 8;  vbox.offset_bottom = -8
+	_car_preview_panel.add_child(vbox)
+
+	var nav_hbox := HBoxContainer.new()
+	nav_hbox.size_flags_horizontal = SIZE_EXPAND_FILL
+	nav_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_child(nav_hbox)
+
+	var prev_btn := Button.new()
+	prev_btn.text = "<"
+	prev_btn.custom_minimum_size = Vector2(40, 34)
+	prev_btn.pressed.connect(_on_car_prev)
+	nav_hbox.add_child(prev_btn)
+
+	_car_model_label = Label.new()
+	_car_model_label.size_flags_horizontal = SIZE_EXPAND_FILL
+	_car_model_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_car_model_label.text = Game.CAR_MODELS[0]["name"]
+	nav_hbox.add_child(_car_model_label)
+
+	var next_btn := Button.new()
+	next_btn.text = ">"
+	next_btn.custom_minimum_size = Vector2(40, 34)
+	next_btn.pressed.connect(_on_car_next)
+	nav_hbox.add_child(next_btn)
+
+	var svc := SubViewportContainer.new()
+	svc.size_flags_horizontal = SIZE_EXPAND_FILL
+	svc.size_flags_vertical = SIZE_EXPAND_FILL
+	svc.stretch = true
+	vbox.add_child(svc)
+
+	_car_preview_viewport = SubViewport.new()
+	_car_preview_viewport.size = Vector2i(284, 240)
+	_car_preview_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_car_preview_viewport.transparent_bg = false
+	svc.add_child(_car_preview_viewport)
+
+	var cam := Camera3D.new()
+	cam.position = Vector3(8.0, 5.0, 10.0)
+	cam.look_at(Vector3(0.0, 0.5, 0.0), Vector3.UP)
+	_car_preview_viewport.add_child(cam)
+
+	var light := DirectionalLight3D.new()
+	light.rotation = Vector3(-PI / 4.0, PI / 4.0, 0.0)
+	light.shadow_enabled = false
+	light.light_energy = 1.2
+	_car_preview_viewport.add_child(light)
+
+	var fill_light := OmniLight3D.new()
+	fill_light.position = Vector3(-5.0, 3.0, -3.0)
+	fill_light.light_energy = 0.4
+	_car_preview_viewport.add_child(fill_light)
+
+	var wenv := WorldEnvironment.new()
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.10, 0.13, 0.18)
+	env.ambient_light_color = Color(0.75, 0.80, 0.90)
+	env.ambient_light_energy = 0.5
+	wenv.environment = env
+	_car_preview_viewport.add_child(wenv)
+
+	add_child(_car_preview_panel)
+	_update_car_preview()
+
+func _update_car_preview() -> void:
+	if _car_preview_viewport == null:
+		return
+	if _car_preview_node != null:
+		_car_preview_node.queue_free()
+		_car_preview_node = null
+
+	var model_def: Dictionary = Game.get_car_model(Game.CAR_MODELS[_car_model_idx]["id"])
+	var scene := load(model_def["path"]) as PackedScene
+	if scene == null:
+		return
+	_car_preview_node = scene.instantiate() as Node3D
+	_car_preview_node.transform = model_def["transform"]
+	_car_preview_viewport.add_child(_car_preview_node)
+
+	if _car_model_label != null:
+		_car_model_label.text = model_def["name"]
+
+func _on_car_model_button_pressed() -> void:
+	_car_preview_panel.visible = !_car_preview_panel.visible
+	_car_model_button.text = "Close car picker" if _car_preview_panel.visible else "Pick car model"
+
+func _on_car_prev() -> void:
+	_car_model_idx = (_car_model_idx - 1 + Game.CAR_MODELS.size()) % Game.CAR_MODELS.size()
+	_update_car_preview()
+
+func _on_car_next() -> void:
+	_car_model_idx = (_car_model_idx + 1) % Game.CAR_MODELS.size()
+	_update_car_preview()
+
+func get_car_model_id() -> String:
+	return Game.CAR_MODELS[_car_model_idx]["id"]
+
+func set_car_model_id(model_id: String) -> void:
+	for i in Game.CAR_MODELS.size():
+		if Game.CAR_MODELS[i]["id"] == model_id:
+			_car_model_idx = i
+			_update_car_preview()
+			return
 
 func _build_bindings_text() -> String:
 	var lines: Array[String] = []
