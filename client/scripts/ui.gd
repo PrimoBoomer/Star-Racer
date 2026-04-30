@@ -41,6 +41,8 @@ var _car_preview_panel: Panel = null
 var _car_preview_viewport: SubViewport = null
 var _car_preview_node: Node3D = null
 
+var _track_picker: OptionButton = null
+
 func _ready() -> void:
 	self.lobbies_list.set_column_title(0, "Name");
 	self.lobbies_list.set_column_title(1, "Owner");
@@ -60,6 +62,7 @@ func _ready() -> void:
 
 	_setup_car_model_picker()
 	_setup_car_preview_panel()
+	_setup_track_picker()
 
 func _setup_car_model_picker() -> void:
 	var player_options := $OnlineMenu/Container/PlayerOptions as HBoxContainer
@@ -69,6 +72,18 @@ func _setup_car_model_picker() -> void:
 	_car_model_button.size_flags_horizontal = SIZE_EXPAND_FILL
 	_car_model_button.pressed.connect(_on_car_model_button_pressed)
 	player_options.add_child(_car_model_button)
+
+func _setup_track_picker() -> void:
+	var menu1 := $OnlineMenu/Container/CreateLobbyMenu1 as HBoxContainer
+	var label := Label.new()
+	label.text = "Track:"
+	menu1.add_child(label)
+
+	_track_picker = OptionButton.new()
+	_track_picker.size_flags_horizontal = SIZE_EXPAND_FILL
+	_track_picker.disabled = true
+	_track_picker.add_item("(loading...)")
+	menu1.add_child(_track_picker)
 
 func _setup_car_preview_panel() -> void:
 	_car_preview_panel = Panel.new()
@@ -242,7 +257,7 @@ func switch_mode(next_mode: Game.Mode, server_up: bool):
 			else:
 				self.info_label.text = "Lobbies fetched, select one to join or create a new one"
 				self.join_button.disabled = false
-				self.create_button.disabled = false
+				self.create_button.disabled = (_track_picker == null) or (_track_picker.item_count == 0) or _track_picker.disabled
 	elif next_mode == Game.Mode.LOBBY_INTERMISSION:
 		self.back_button.grab_focus()
 		for child in self.players_in_lobby.get_children():
@@ -281,6 +296,33 @@ func _on_create_button_pressed() -> void:
 
 func _on_back_button_pressed() -> void:
 	self.network.terminate()
+
+func refresh_tracks(tracks: Array) -> void:
+	if _track_picker == null:
+		return
+	var prev_id := get_selected_track_id()
+	_track_picker.clear()
+	for i in tracks.size():
+		var t: Dictionary = tracks[i]
+		_track_picker.add_item(String(t.get("name", t.get("id", "?"))), i)
+		_track_picker.set_item_metadata(i, String(t.get("id", "")))
+	_track_picker.disabled = tracks.is_empty()
+	if !prev_id.is_empty():
+		for i in _track_picker.item_count:
+			if String(_track_picker.get_item_metadata(i)) == prev_id:
+				_track_picker.select(i)
+				break
+	if !tracks.is_empty() && self.star_racer.mode == Game.Mode.FETCH_LOBBIES:
+		self.create_button.disabled = false
+
+func get_selected_track_id() -> String:
+	if _track_picker == null || _track_picker.item_count == 0:
+		return ""
+	var idx := _track_picker.selected
+	if idx < 0:
+		idx = 0
+	var meta = _track_picker.get_item_metadata(idx)
+	return String(meta) if meta != null else ""
 
 func refresh(lobby_infos: Array):
 	self.lobbies_list.clear()

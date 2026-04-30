@@ -146,6 +146,7 @@ fn chaser_steer(snap: &BotSnapshot) -> f64 {
 
 struct BotConfig {
     lobby_id: &'static str,
+    track_id: &'static str,
     mode: BotMode,
     create: bool,
     min_players: u8,
@@ -168,6 +169,7 @@ fn launch_bot(cfg: BotConfig) -> JoinHandle<anyhow::Result<()>> {
         let req = if cfg.create {
             ClientMessage::Request(RequestMessage::CreateLobby {
                 lobby_id: cfg.lobby_id.into(),
+                track_id: cfg.track_id.into(),
                 nickname: name.clone(),
                 min_players: cfg.min_players,
                 max_players: cfg.max_players,
@@ -294,6 +296,7 @@ async fn spawn_lobby(
 
     hdls.push(launch_bot(BotConfig {
         lobby_id,
+        track_id: "circuit_one",
         mode: modes[0],
         create: true,
         min_players,
@@ -305,6 +308,7 @@ async fn spawn_lobby(
     for &mode in &modes[1..] {
         hdls.push(launch_bot(BotConfig {
             lobby_id,
+            track_id: "circuit_one",
             mode,
             create: false,
             min_players: 0,

@@ -5,6 +5,10 @@ pub mod lobby;
 pub mod protocol;
 pub mod run;
 pub mod track;
+pub mod tracks_dir;
+
+#[cfg(feature = "editor")]
+pub mod editor;
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 

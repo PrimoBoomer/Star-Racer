@@ -41,13 +41,22 @@ pub enum JoinError {
     LobbyAlreadyExists,
     LobbyNotFound,
     InvalidLobbyConfig,
+    TrackNotFound,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct TrackInfo {
+    pub id: String,
+    pub name: String,
 }
 
 #[derive(Serialize, Deserialize)]
 pub enum RequestMessage {
     FetchLobbyList,
+    FetchTrackList,
     CreateLobby {
         lobby_id: String,
+        track_id: String,
         nickname: String,
         min_players: u8,
         max_players: u8,
@@ -85,9 +94,10 @@ pub struct LobbyInfo {
 #[derive(Serialize, Deserialize)]
 pub enum Response {
     LobbyList(Vec<LobbyInfo>),
+    TrackList(Vec<TrackInfo>),
 
     LobbyJoined {
-        track_id: u8,
+        track_id: String,
         race_ongoing: bool,
         min_players: u8,
         max_players: u8,
@@ -167,17 +177,19 @@ mod tests {
 
     #[test]
     fn create_lobby_request_deserializes() {
-        let json = r#"{"Request":{"CreateLobby":{"lobby_id":"abc","nickname":"alice","min_players":2,"max_players":4,"color":{"x":1.0,"y":0.0,"z":0.0}}}}"#;
+        let json = r#"{"Request":{"CreateLobby":{"lobby_id":"abc","track_id":"circuit_one","nickname":"alice","min_players":2,"max_players":4,"color":{"x":1.0,"y":0.0,"z":0.0}}}}"#;
         let msg: ClientMessage = serde_json::from_str(json).unwrap();
         match msg {
             ClientMessage::Request(RequestMessage::CreateLobby {
                 lobby_id,
+                track_id,
                 nickname,
                 min_players,
                 max_players,
                 color,
             }) => {
                 assert_eq!(lobby_id, "abc");
+                assert_eq!(track_id, "circuit_one");
                 assert_eq!(nickname, "alice");
                 assert_eq!(min_players, 2);
                 assert_eq!(max_players, 4);
@@ -187,6 +199,34 @@ mod tests {
             }
             _ => panic!("expected CreateLobby variant"),
         }
+    }
+
+    #[test]
+    fn fetch_track_list_request_deserializes() {
+        let json = r#"{"Request":"FetchTrackList"}"#;
+        let msg: ClientMessage = serde_json::from_str(json).unwrap();
+        assert!(matches!(
+            msg,
+            ClientMessage::Request(RequestMessage::FetchTrackList)
+        ));
+    }
+
+    #[test]
+    fn track_list_response_serializes() {
+        let msg = ServerMessage::Response(Response::TrackList(vec![
+            TrackInfo {
+                id: "circuit_one".into(),
+                name: "Circuit One".into(),
+            },
+            TrackInfo {
+                id: "circuit_two".into(),
+                name: "Circuit Two".into(),
+            },
+        ]));
+        let json = serde_json::to_string(&msg).unwrap();
+        assert!(json.contains("TrackList"));
+        assert!(json.contains("circuit_one"));
+        assert!(json.contains("Circuit Two"));
     }
 
     #[test]

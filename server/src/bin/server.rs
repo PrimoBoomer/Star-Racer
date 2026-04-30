@@ -1,6 +1,6 @@
 use colored::Colorize;
-use star_racer_server::track::TrackDef;
-use std::{io::Write, sync::Arc};
+use star_racer_server::tracks_dir;
+use std::{io::Write, path::PathBuf, sync::Arc};
 use tokio::time::Instant;
 
 pub fn log_init() {
@@ -38,10 +38,21 @@ async fn main() -> anyhow::Result<()> {
     log_init();
     raise_timer_resolution();
 
-    let raw = include_str!("../../tracks/circuit_two.json");
-    let track = Arc::new(TrackDef::from_json(raw)?);
+    let tracks_path = std::env::args()
+        .nth(1)
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("./tracks"));
 
-    star_racer_server::run::run(8080, track).await?;
+    let tracks = tracks_dir::load_all(&tracks_path)
+        .map_err(|e| anyhow::anyhow!("loading tracks from {}: {e}", tracks_path.display()))?;
+    log::info!(
+        "loaded {} track(s) from {}: [{}]",
+        tracks.len(),
+        tracks_path.display(),
+        tracks.keys().cloned().collect::<Vec<_>>().join(", ")
+    );
+
+    star_racer_server::run::run(8080, Arc::new(tracks)).await?;
 
     anyhow::Ok(())
 }

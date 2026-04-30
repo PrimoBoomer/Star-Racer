@@ -111,7 +111,7 @@ class MessageParser:
 			return {"ok": false, "error_str": err_str}
 		return {
 			"ok": true,
-			"track_id": int(joined.get("track_id", 0)),
+			"track_id": String(joined.get("track_id", "")),
 			"race_ongoing": bool(joined.get("race_ongoing", false)),
 			"min_players": int(joined.get("min_players", 2)),
 			"max_players": int(joined.get("max_players", 4)),
@@ -256,9 +256,8 @@ var _debug_enabled := false
 @export var MIN_PLAYERS_DEFAULT = 2
 @export var MAX_PLAYERS_DEFAULT = 4
 @export var COLOR_DEFAULT = [1.0, 1.0, 1.0]
-@export var tracks = [
-	["circuit_one", "Circuit One"],
-]
+var available_tracks: Array = []  # Array of {id, name}, populated from server
+var _fetch_pending: int = 0  # responses still expected during FETCH_LOBBIES
 
 @onready var player_scene: PackedScene = load("res://scenes/player.tscn")
 @onready var opponent_scene: PackedScene = load("res://scenes/opponent.tscn")
@@ -406,14 +405,19 @@ func switch_mode(next_mode: Mode, server_up: bool):
 
 	self.mode = next_mode
 
-func switch_to_track(track_id: int, race_ongoing: bool):
-	if track_id >= self.tracks.size():
-		printerr("bad track id %d" % track_id)
-		return
+func switch_to_track(track_id: String, race_ongoing: bool):
+	var display_name := track_id
+	for t in self.available_tracks:
+		if t.get("id", "") == track_id:
+			display_name = String(t.get("name", track_id))
+			break
 	%UI.set_intermission_lobby_name(%UI.get_lobby_name())
-	%UI.set_intermission_track_name("Current track: %s" % self.tracks[track_id][1])
+	%UI.set_intermission_track_name("Current track: %s" % display_name)
 
-	var track_scene: PackedScene = load("res://tracks/" + self.tracks[track_id][0] + "/level.tscn")
+	var per_track_path := "res://tracks/" + track_id + "/level.tscn"
+	var fallback_path := "res://tracks/circuit_one/level.tscn"
+	var scene_path := per_track_path if ResourceLoader.exists(per_track_path) else fallback_path
+	var track_scene: PackedScene = load(scene_path)
 	self.track_node = track_scene.instantiate()
 	$Track.add_child(self.track_node)
 
@@ -460,28 +464,34 @@ func switch_to_track(track_id: int, race_ongoing: bool):
 		switch_mode(Mode.LOBBY_INTERMISSION, true)
 
 func on_connection():
-	var request: Dictionary
+	var requests: Array = []
 	if self.mode == Mode.FETCH_LOBBIES:
-		request = {"Request": "FetchLobbyList"}
+		requests.append({"Request": "FetchLobbyList"})
+		if self.available_tracks.is_empty():
+			requests.append({"Request": "FetchTrackList"})
+		self._fetch_pending = requests.size()
 	elif self.mode == Mode.JOINING_LOBBY:
-		request = {"Request": {"JoinLobby": {
+		requests.append({"Request": {"JoinLobby": {
 			"lobby_id": %UI.get_selected_lobby_name(),
 			"nickname": %UI.get_nickname(),
 			"color": MessageParser.color_to_proto(%UI.get_car_color()),
-		}}}
+		}}})
 	elif self.mode == Mode.CREATING_LOBBY:
-		request = {"Request": {"CreateLobby": {
+		requests.append({"Request": {"CreateLobby": {
 			"lobby_id": %UI.get_lobby_name(),
+			"track_id": %UI.get_selected_track_id(),
 			"nickname": %UI.get_nickname(),
 			"min_players": %UI.get_min_players(),
 			"max_players": %UI.get_max_players(),
 			"color": MessageParser.color_to_proto(%UI.get_car_color()),
-		}}}
+		}}})
 	else:
 		return
-	var result = %Network.socket.send_text(JSON.stringify(request))
-	if result != OK:
-		printerr("Could not send request: %s" % request)
+
+	for req in requests:
+		var result = %Network.socket.send_text(JSON.stringify(req))
+		if result != OK:
+			printerr("Could not send request: %s" % req)
 
 	if self.mode == Mode.CREATING_LOBBY:
 		switch_mode(Mode.JOINING_LOBBY, true)
@@ -491,11 +501,21 @@ func on_server_message(message: Dictionary) -> bool:
 		print(message)
 
 	if self.mode == Mode.FETCH_LOBBIES:
-		if !message.has("Response") || !message["Response"].has("LobbyList"):
-			printerr("Unexpected response for fetch lobbies")
-			return false
-		%UI.refresh(message["Response"]["LobbyList"])
-		return false
+		if message.has("Response") && message["Response"].has("LobbyList"):
+			%UI.refresh(message["Response"]["LobbyList"])
+		elif message.has("Response") && message["Response"].has("TrackList"):
+			var raw_list: Array = message["Response"]["TrackList"]
+			self.available_tracks.clear()
+			for entry in raw_list:
+				self.available_tracks.append({
+					"id": String(entry.get("id", "")),
+					"name": String(entry.get("name", "")),
+				})
+			%UI.refresh_tracks(self.available_tracks)
+		else:
+			printerr("Unexpected response in FETCH_LOBBIES")
+		self._fetch_pending = max(0, self._fetch_pending - 1)
+		return self._fetch_pending > 0  # keep connection until all pending responses are in
 
 	elif self.mode == Mode.JOINING_LOBBY:
 		if !message.has("Response") || !message["Response"].has("LobbyJoined"):

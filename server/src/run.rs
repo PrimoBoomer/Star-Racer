@@ -1,9 +1,9 @@
 use crate::{
     error::Error,
     lobby::{send_join_error, spawn_ws_writer, Lobby, OutgoingMessage},
-    protocol::{ClientMessage, ColorProto, JoinError, LobbyInfo, RequestMessage, Response, ServerMessage},
+    protocol::{ClientMessage, ColorProto, JoinError, LobbyInfo, RequestMessage, Response, ServerMessage, TrackInfo},
     sr_log,
-    track::TrackDef,
+    tracks_dir::TrackMap,
     Result,
 };
 use chrono::Utc;
@@ -24,8 +24,12 @@ enum LobbyCommand {
     FetchList {
         resp: oneshot::Sender<Vec<LobbyInfo>>,
     },
+    FetchTracks {
+        resp: oneshot::Sender<Vec<TrackInfo>>,
+    },
     Create {
         lobby_id: String,
+        track_id: String,
         nickname: String,
         min_players: u8,
         max_players: u8,
@@ -42,17 +46,17 @@ enum LobbyCommand {
     },
 }
 
-pub async fn run(port: u16, track: Arc<TrackDef>) -> Result<()> {
+pub async fn run(port: u16, tracks: Arc<TrackMap>) -> Result<()> {
     let endpoint = format!("127.0.0.1:{}", port);
     let listener = TcpListener::bind(&endpoint).await.map_err(Error::TcpError)?;
     sr_log!(info, "RUN", "server listening on {}", endpoint);
-    run_with_listener(listener, track).await
+    run_with_listener(listener, tracks).await
 }
 
-pub async fn run_with_listener(listener: TcpListener, track: Arc<TrackDef>) -> Result<()> {
+pub async fn run_with_listener(listener: TcpListener, tracks: Arc<TrackMap>) -> Result<()> {
     let (cmd_tx, cmd_rx) = mpsc::channel::<LobbyCommand>(64);
 
-    spawn_core_loop(cmd_rx, track);
+    spawn_core_loop(cmd_rx, tracks);
     sr_log!(info, "RUN", "core loop spawned, awaiting connections");
 
     loop {
@@ -64,7 +68,7 @@ pub async fn run_with_listener(listener: TcpListener, track: Arc<TrackDef>) -> R
     }
 }
 
-fn spawn_core_loop(mut rx: mpsc::Receiver<LobbyCommand>, track: Arc<TrackDef>) {
+fn spawn_core_loop(mut rx: mpsc::Receiver<LobbyCommand>, tracks: Arc<TrackMap>) {
     tokio::spawn(async move {
         let mut lobbies: HashMap<String, Lobby> = HashMap::new();
         let mut next_tick = tokio::time::Instant::now() + FIXED_DT_DURATION;
@@ -97,7 +101,7 @@ fn spawn_core_loop(mut rx: mpsc::Receiver<LobbyCommand>, track: Arc<TrackDef>) {
                 }
 
                 Some(cmd) = rx.recv() => {
-                    handle_command(cmd, &mut lobbies, &track);
+                    handle_command(cmd, &mut lobbies, &tracks);
                 }
 
                 else => return,
@@ -115,15 +119,21 @@ fn run_tick(lobbies: &mut HashMap<String, Lobby>, delta: f64) {
     });
 }
 
-fn handle_command(cmd: LobbyCommand, lobbies: &mut HashMap<String, Lobby>, track: &Arc<TrackDef>) {
+fn handle_command(cmd: LobbyCommand, lobbies: &mut HashMap<String, Lobby>, tracks: &Arc<TrackMap>) {
     match cmd {
         LobbyCommand::FetchList { resp } => {
             sr_log!(trace, "LOBBY", "fetch list ({} lobbies)", lobbies.len());
             let _ = resp.send(build_lobby_list(lobbies));
         }
 
+        LobbyCommand::FetchTracks { resp } => {
+            sr_log!(trace, "LOBBY", "fetch tracks ({} tracks)", tracks.len());
+            let _ = resp.send(build_track_list(tracks));
+        }
+
         LobbyCommand::Create {
             lobby_id,
+            track_id,
             nickname,
             min_players,
             max_players,
@@ -134,9 +144,10 @@ fn handle_command(cmd: LobbyCommand, lobbies: &mut HashMap<String, Lobby>, track
             sr_log!(
                 trace,
                 "LOBBY",
-                "create request: id={} owner={} min={} max={}",
+                "create request: id={} owner={} track={} min={} max={}",
                 lobby_id,
                 nickname,
+                track_id,
                 min_players,
                 max_players
             );
@@ -156,6 +167,11 @@ fn handle_command(cmd: LobbyCommand, lobbies: &mut HashMap<String, Lobby>, track
                 send_join_error(&tx_out, error);
                 return;
             }
+            let Some(track) = tracks.get(&track_id) else {
+                sr_log!(trace, "LOBBY", "create rejected: unknown track_id={}", track_id);
+                send_join_error(&tx_out, JoinError::TrackNotFound);
+                return;
+            };
             let mut lobby = Lobby::new(
                 nickname.clone(),
                 Utc::now().format("%H:%M").to_string(),
@@ -218,6 +234,18 @@ fn build_lobby_list(lobbies: &HashMap<String, Lobby>) -> Vec<LobbyInfo> {
             racing: l.is_racing(),
         })
         .collect()
+}
+
+fn build_track_list(tracks: &TrackMap) -> Vec<TrackInfo> {
+    let mut list: Vec<TrackInfo> = tracks
+        .values()
+        .map(|t| TrackInfo {
+            id: t.id.clone(),
+            name: t.name.clone(),
+        })
+        .collect();
+    list.sort_by(|a, b| a.id.cmp(&b.id));
+    list
 }
 
 async fn handle_connection(stream: TcpStream, cmd_tx: mpsc::Sender<LobbyCommand>) {
@@ -286,19 +314,42 @@ async fn handle_request(
             Some(ws)
         }
 
+        RequestMessage::FetchTrackList => {
+            sr_log!(trace, "WS", "request: FetchTrackList");
+            let (resp_tx, resp_rx) = oneshot::channel();
+            if cmd_tx.send(LobbyCommand::FetchTracks { resp: resp_tx }).await.is_err() {
+                return None;
+            }
+            let list = resp_rx.await.unwrap_or_default();
+            let response = ServerMessage::Response(Response::TrackList(list));
+            let _ = ws
+                .send(Message::Text(serde_json::to_string(&response).unwrap().into()))
+                .await;
+            Some(ws)
+        }
+
         RequestMessage::CreateLobby {
             lobby_id,
+            track_id,
             nickname,
             min_players,
             max_players,
             color,
         } => {
-            sr_log!(trace, "WS", "request: CreateLobby id={} nick={}", lobby_id, nickname);
+            sr_log!(
+                trace,
+                "WS",
+                "request: CreateLobby id={} nick={} track={}",
+                lobby_id,
+                nickname,
+                track_id
+            );
             let (tx_stream, rx_stream) = ws.split();
             let tx_out = spawn_ws_writer(tx_stream);
             let _ = cmd_tx
                 .send(LobbyCommand::Create {
                     lobby_id,
+                    track_id,
                     nickname,
                     min_players,
                     max_players,
@@ -372,7 +423,7 @@ mod tests {
 
     #[test]
     fn build_lobby_list_maps_each_lobby_to_info() {
-        let track = Arc::new(TrackDef::from_json(include_str!("../tracks/circuit_one.json")).unwrap());
+        let track = Arc::new(crate::track::TrackDef::from_json(include_str!("../tracks/circuit_one.json")).unwrap());
         let mut lobbies = HashMap::new();
         lobbies.insert(
             "foo".to_string(),

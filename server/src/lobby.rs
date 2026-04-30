@@ -347,7 +347,7 @@ impl Lobby {
         let player_idx = self.first_free_idx();
 
         let join_msg = ServerMessage::Response(Response::LobbyJoined {
-            track_id: 0,
+            track_id: self.track.id.clone(),
             race_ongoing: !matches!(self.state, State::Intermission),
             min_players: self.min_players,
             max_players: self.max_players,
@@ -929,7 +929,7 @@ fn collect_outgoing_batch(
 
 pub(crate) fn send_join_error(tx_out: &tokio::sync::mpsc::Sender<OutgoingMessage>, error: JoinError) {
     let msg = ServerMessage::Response(Response::LobbyJoined {
-        track_id: 0,
+        track_id: String::new(),
         race_ongoing: false,
         min_players: 0,
         max_players: 0,

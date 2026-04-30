@@ -4,7 +4,7 @@ use star_racer_server::{
     run::run_with_listener,
     track::TrackDef,
 };
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{client_async, WebSocketStream};
 use tungstenite::Message;
@@ -14,9 +14,12 @@ type WsClient = WebSocketStream<tokio_tungstenite::MaybeTlsStream<TcpStream>>;
 async fn spawn_test_server() -> u16 {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
-    let track = Arc::new(TrackDef::from_json(include_str!("../tracks/circuit_one.json")).unwrap());
+    let def = TrackDef::from_json(include_str!("../tracks/circuit_one.json")).unwrap();
+    let mut tracks: HashMap<String, Arc<TrackDef>> = HashMap::new();
+    tracks.insert(def.id.clone(), Arc::new(def));
+    let tracks = Arc::new(tracks);
     tokio::spawn(async move {
-        let _ = run_with_listener(listener, track).await;
+        let _ = run_with_listener(listener, tracks).await;
     });
     // Give the server a moment to spawn its core loop.
     tokio::time::sleep(Duration::from_millis(50)).await;
@@ -88,6 +91,7 @@ async fn create_lobby_then_appears_in_list() {
         &mut creator,
         RequestMessage::CreateLobby {
             lobby_id: "room1".into(),
+            track_id: "circuit_one".into(),
             nickname: "alice".into(),
             min_players: 2,
             max_players: 4,
@@ -132,6 +136,7 @@ async fn create_lobby_with_invalid_config_returns_error() {
         &mut ws,
         RequestMessage::CreateLobby {
             lobby_id: "bad".into(),
+            track_id: "circuit_one".into(),
             nickname: "alice".into(),
             min_players: 5,
             max_players: 2,
@@ -155,6 +160,7 @@ async fn create_lobby_with_zero_min_players_returns_error() {
         &mut ws,
         RequestMessage::CreateLobby {
             lobby_id: "bad".into(),
+            track_id: "circuit_one".into(),
             nickname: "alice".into(),
             min_players: 0,
             max_players: 4,
@@ -179,6 +185,7 @@ async fn create_duplicate_lobby_id_returns_error() {
         &mut a,
         RequestMessage::CreateLobby {
             lobby_id: "dup".into(),
+            track_id: "circuit_one".into(),
             nickname: "alice".into(),
             min_players: 2,
             max_players: 4,
@@ -193,6 +200,7 @@ async fn create_duplicate_lobby_id_returns_error() {
         &mut b,
         RequestMessage::CreateLobby {
             lobby_id: "dup".into(),
+            track_id: "circuit_one".into(),
             nickname: "bob".into(),
             min_players: 2,
             max_players: 4,
@@ -238,6 +246,7 @@ async fn join_existing_lobby_succeeds_and_increments_count() {
         &mut creator,
         RequestMessage::CreateLobby {
             lobby_id: "room".into(),
+            track_id: "circuit_one".into(),
             nickname: "alice".into(),
             min_players: 2,
             max_players: 4,
@@ -284,6 +293,7 @@ async fn join_with_duplicate_nickname_returns_error() {
         &mut creator,
         RequestMessage::CreateLobby {
             lobby_id: "room".into(),
+            track_id: "circuit_one".into(),
             nickname: "alice".into(),
             min_players: 2,
             max_players: 4,
@@ -320,6 +330,7 @@ async fn join_when_full_returns_lobby_full() {
         &mut creator,
         RequestMessage::CreateLobby {
             lobby_id: "tiny".into(),
+            track_id: "circuit_one".into(),
             nickname: "alice".into(),
             min_players: 1,
             max_players: 1,
@@ -402,6 +413,7 @@ async fn lobby_disappears_when_sole_player_disconnects() {
         &mut creator,
         RequestMessage::CreateLobby {
             lobby_id: "ephemeral".into(),
+            track_id: "circuit_one".into(),
             nickname: "alice".into(),
             min_players: 2,
             max_players: 4,
