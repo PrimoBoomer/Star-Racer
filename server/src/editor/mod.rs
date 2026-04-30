@@ -153,7 +153,7 @@ fn sync_edits(
         );
         *mesh_h = meshes.add(Cuboid::new(size.x, size.y, size.z));
         if let Some(mat) = materials.get_mut(&mat_base.0) {
-            mat.base_color = spawn::pick_color_pub(prim);
+            mat.base_color = spawn::pick_color(prim);
         }
     }
 }

@@ -104,10 +104,14 @@ class MessageParser:
 		var joined = msg["Response"]["LobbyJoined"]
 		if joined.has("error") and joined["error"] != null:
 			var err = joined["error"]
-			var err_str = "Unknown error"
-			if err == "NicknameAlreadyUsed": err_str = "Nickname already in use"
-			elif err == "LobbyFull": err_str = "Lobby is full"
-			elif err == "LobbyAlreadyExists": err_str = "Lobby already exists"
+			var err_str = "Unknown error: %s" % str(err)
+			match err:
+				"NicknameAlreadyUsed": err_str = "Nickname already in use"
+				"LobbyFull":           err_str = "Lobby is full"
+				"LobbyAlreadyExists":  err_str = "Lobby already exists"
+				"LobbyNotFound":       err_str = "Lobby not found"
+				"InvalidLobbyConfig":  err_str = "Invalid lobby configuration"
+				"TrackNotFound":       err_str = "Track not found on server"
 			return {"ok": false, "error_str": err_str}
 		return {
 			"ok": true,

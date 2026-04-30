@@ -68,11 +68,7 @@ pub fn despawn_all(commands: &mut Commands, q: &Query<Entity, With<PrimRef>>) {
     }
 }
 
-pub fn pick_color_pub(prim: &Primitive) -> Color {
-    pick_color(prim)
-}
-
-fn pick_color(prim: &Primitive) -> Color {
+pub fn pick_color(prim: &Primitive) -> Color {
     if let Some(c) = prim.color {
         return Color::srgb(c[0] as f32, c[1] as f32, c[2] as f32);
     }
