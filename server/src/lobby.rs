@@ -146,10 +146,9 @@ const BRAKE_MIN_SPEED: f64 = 1.0;
 const MAX_TURN_RATE_GRIP: f64 = 1.2;
 const MAX_TURN_RATE_DRIFT: f64 = 3.2;
 const STEER_P_GAIN: f64 = 25_000.0;
-const LATERAL_GRIP: f64 = 0.55;
-const LATERAL_DRIFT: f64 = 0.08;
+const ALIGN_RATE_GRIP: f64 = 4.0;
+const ALIGN_RATE_DRIFT: f64 = 0.6;
 const MOTION_DIRECTION_EPSILON: f64 = 0.25;
-const TURN_DRAG_PER_STEER: f64 = 0.06;
 const CAR_COLLISION: InteractionGroups = InteractionGroups::new(
     Group::GROUP_2,
     Group::GROUP_1.union(Group::GROUP_3),
@@ -160,6 +159,15 @@ const NORMAL_LINEAR_DAMPING: f64 = 0.3;
 const DRIFT_LINEAR_DAMPING: f64 = 0.18;
 const DRIFT_MIN_SPEED: f64 = 3.0;
 
+const BOOST_CHARGE_RATE: f64 = 1.0;
+const BOOST_CHARGE_DECAY: f64 = 2.0;
+const BOOST_CHARGE_MIN: f64 = 0.30;
+const BOOST_PEAK_BONUS: f64 = 18.0;
+const BOOST_DURATION: f64 = 1.5;
+const BOOST_ALIGN_THRESHOLD_COS: f64 = 0.9781476; // cos(12°)
+const BOOST_PENDING_TIMEOUT: f64 = 1.5;
+const BOOST_SUSTAIN_FORCE: f64 = 30_000.0;
+
 const FINISH_WAIT_SECS: f64 = 30.0;
 const STATE_SYNC_INTERVAL: f64 = 0.05;
 
@@ -169,6 +177,91 @@ struct PlayerInput {
     steer_left: f64,
     steer_right: f64,
     star_drift: bool,
+}
+
+#[derive(Default, Clone, Copy, PartialEq)]
+enum BoostState {
+    #[default]
+    Idle,
+    Pending,
+    Boosting,
+}
+
+fn update_boost_fsm(
+    racer: &mut Racer,
+    rb: &mut rapier3d_f64::prelude::RigidBody,
+    forward_dir: &Vec3,
+    speed: f64,
+    delta: f64,
+) {
+    // Charge accumulation / decay (always runs).
+    if racer.input.star_drift && speed > DRIFT_MIN_SPEED {
+        racer.boost_charge = (racer.boost_charge + BOOST_CHARGE_RATE * delta).min(1.0);
+    } else if racer.boost_state != BoostState::Pending {
+        racer.boost_charge = (racer.boost_charge - BOOST_CHARGE_DECAY * delta).max(0.0);
+    }
+
+    let just_released = racer.prev_star_drift && !racer.input.star_drift;
+
+    match racer.boost_state {
+        BoostState::Idle => {
+            if just_released && racer.boost_charge >= BOOST_CHARGE_MIN {
+                racer.boost_state = BoostState::Pending;
+                racer.boost_pending_t = BOOST_PENDING_TIMEOUT;
+            }
+        }
+        BoostState::Pending => {
+            racer.boost_pending_t -= delta;
+            // Player re-engages drift before align: cancel pending, resume idle (charge keeps building).
+            if racer.input.star_drift {
+                racer.boost_state = BoostState::Idle;
+            } else if racer.boost_pending_t <= 0.0 {
+                racer.boost_state = BoostState::Idle;
+            } else if speed > 1.0 {
+                let vel = rb.linvel();
+                let vel_dir = vel / speed;
+                let dot = vel_dir.dot(*forward_dir);
+                if dot >= BOOST_ALIGN_THRESHOLD_COS {
+                    let base = speed.max(DRIFT_MIN_SPEED);
+                    racer.boost_peak_speed = base + BOOST_PEAK_BONUS * racer.boost_charge;
+                    let new_speed = racer.boost_peak_speed.max(speed);
+                    rb.set_linvel(*forward_dir * new_speed, true);
+                    racer.boost_state = BoostState::Boosting;
+                    racer.boost_t_remaining = BOOST_DURATION;
+                    racer.boost_charge = 0.0;
+                }
+            }
+        }
+        BoostState::Boosting => {
+            racer.boost_t_remaining -= delta;
+            if racer.boost_t_remaining <= 0.0 {
+                racer.boost_state = BoostState::Idle;
+            } else {
+                // Sustain: if forward speed dropped below target, push it back up.
+                let forward_speed = forward_dir.dot(rb.linvel());
+                if forward_speed < racer.boost_peak_speed {
+                    rb.add_force(*forward_dir * BOOST_SUSTAIN_FORCE, true);
+                }
+            }
+        }
+    }
+}
+
+/// Spherical interpolation between two unit vectors, clamped by max_angle (radians).
+fn vec3_slerp_clamped(from: Vec3, to: Vec3, max_angle: f64) -> Vec3 {
+    let dot = from.dot(to).clamp(-1.0, 1.0);
+    let angle = dot.acos();
+    if angle < 1e-4 || max_angle <= 0.0 {
+        return from;
+    }
+    let t = (max_angle / angle).min(1.0);
+    let sin_a = angle.sin();
+    if sin_a.abs() < 1e-4 {
+        return from;
+    }
+    let a = ((1.0 - t) * angle).sin() / sin_a;
+    let b = (t * angle).sin() / sin_a;
+    from * a + to * b
 }
 
 fn update_reverse_mode(was_reversing: bool, forward_speed: f64, star_drift: bool, throttle: bool) -> bool {
@@ -218,6 +311,7 @@ pub(crate) struct Racer {
     idx: u8,
     rigid_body: RigidBodyHandle,
     input: PlayerInput,
+    prev_star_drift: bool,
     laps: u8,
     prev_z: f64,
     crossed_positive_z: bool,
@@ -225,6 +319,11 @@ pub(crate) struct Racer {
     finished: bool,
     reversing: bool,
     last_sent_rotation: Option<QuatProto>,
+    boost_state: BoostState,
+    boost_charge: f64,
+    boost_t_remaining: f64,
+    boost_pending_t: f64,
+    boost_peak_speed: f64,
 }
 
 impl Racer {
@@ -245,6 +344,7 @@ impl Racer {
             idx,
             rigid_body: handle,
             input: PlayerInput::default(),
+            prev_star_drift: false,
             laps: 0,
             prev_z: 0.0,
             crossed_positive_z: false,
@@ -252,6 +352,11 @@ impl Racer {
             finished: false,
             reversing: false,
             last_sent_rotation: None,
+            boost_state: BoostState::Idle,
+            boost_charge: 0.0,
+            boost_t_remaining: 0.0,
+            boost_pending_t: 0.0,
+            boost_peak_speed: 0.0,
         }
     }
 }
@@ -420,9 +525,13 @@ impl Lobby {
                 continue;
             };
             let vel = rb.linvel();
-            let speed = vel.length();
-            if speed > 0.1 {
-                rb.set_linvel(vel + vel / speed * boost_strength, true);
+            let mut horiz = vel;
+            horiz.y = 0.0;
+            let horiz_speed = horiz.length();
+            if horiz_speed > 0.1 {
+                let boost_vec = horiz / horiz_speed * boost_strength;
+                let new_vel = Vec3::new(vel.x + boost_vec.x, vel.y, vel.z + boost_vec.z);
+                rb.set_linvel(new_vel, true);
             }
         }
     }
@@ -485,7 +594,11 @@ impl Lobby {
             let is_drifting = racer.input.star_drift && speed > DRIFT_MIN_SPEED;
             rb.reset_forces(true);
 
+            // Note: rapier puts -Z as the canonical "forward" for our cars (see existing
+            // `forward_speed = -forward.dot(...)`), so the unrotated forward is +Z and the
+            // velocity-aligned axis is -forward.
             let forward = *rb.rotation() * Vec3::new(0., 0., 1.);
+            let forward_dir_world = -forward; // points in the direction the car is facing
 
             let forward_speed = -forward.dot(rb.linvel());
             racer.reversing = update_reverse_mode(
@@ -524,19 +637,15 @@ impl Lobby {
 
             rb.apply_torque_impulse(Vec3::new(0., yaw_error * STEER_P_GAIN * delta, 0.), true);
 
-            let right = *rb.rotation() * Vec3::new(1., 0., 0.);
-            let lateral_speed = right.dot(rb.linvel());
-            let grip_cancel = if is_drifting { LATERAL_DRIFT } else { LATERAL_GRIP };
-            let mass = rb.mass();
-            rb.apply_impulse(-right * lateral_speed * mass * grip_cancel, true);
-
-            let steer_amount = effective_steer.abs();
-            if steer_amount > 0.0 && forward_speed > 0.0 {
-                let turn_drag = (1.0 - TURN_DRAG_PER_STEER * steer_amount * delta).clamp(0.0, 1.0);
-                let linvel = rb.linvel();
-                let lateral_component = right * lateral_speed;
-                let forward_component = linvel - lateral_component;
-                rb.set_linvel(forward_component * turn_drag + lateral_component, true);
+            // Velocity-vector slerp toward forward, magnitude preserved.
+            // Replaces the old lateral-impulse cancellation.
+            let vel = rb.linvel();
+            let vel_speed = vel.length();
+            if vel_speed > 0.5 && !racer.reversing {
+                let cur_dir = vel / vel_speed;
+                let rate = if is_drifting { ALIGN_RATE_DRIFT } else { ALIGN_RATE_GRIP };
+                let new_dir = vec3_slerp_clamped(cur_dir, forward_dir_world, rate * delta);
+                rb.set_linvel(new_dir * vel_speed, true);
             }
 
             rb.set_linear_damping(if is_drifting {
@@ -544,6 +653,10 @@ impl Lobby {
             } else {
                 NORMAL_LINEAR_DAMPING
             });
+
+            // Boost FSM update.
+            update_boost_fsm(racer, rb, &forward_dir_world, speed, delta);
+            racer.prev_star_drift = racer.input.star_drift;
         }
 
         for nickname in to_remove {

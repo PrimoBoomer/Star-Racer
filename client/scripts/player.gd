@@ -8,27 +8,33 @@ const MOTION_DIRECTION_EPSILON := 0.25
 const MAX_TURN_RATE_GRIP := 1.2
 const MAX_TURN_RATE_DRIFT := 3.2
 const STEER_P_GAIN       := 25_000.0
-const LATERAL_GRIP       := 0.55
-const LATERAL_DRIFT      := 0.08
+const ALIGN_RATE_GRIP    := 4.0
+const ALIGN_RATE_DRIFT   := 0.6
 const NORMAL_LINEAR_DAMP := 0.3
-const TURN_DRAG_PER_STEER := 0.06
 const DRIFT_LINEAR_DAMP  := 0.18
+const DRIFT_MIN_SPEED    := 3.0
 
-const DRIFT_CHARGE_RATE  := 1.1    # charge/s while holding drift input
-const DRIFT_CHARGE_DECAY := 2.0    # decay/s when not holding drift
-const DRIFT_BOOST_MIN    := 0.25   # minimum charge to trigger boost
-const DRIFT_BOOST_FORCE  := 22_000.0  # per-frame force during boost window
-const DRIFT_BOOST_FRAMES := 14     # frames to apply force (~230 ms at 60 fps)
+const BOOST_CHARGE_RATE   := 1.0
+const BOOST_CHARGE_DECAY  := 2.0
+const BOOST_CHARGE_MIN    := 0.30
+const BOOST_PEAK_BONUS    := 18.0
+const BOOST_DURATION      := 1.5
+const BOOST_ALIGN_THRESHOLD_COS := 0.9781476  # cos(12°)
+const BOOST_PENDING_TIMEOUT := 1.5
+const BOOST_SUSTAIN_FORCE  := 30_000.0
 
 const POS_SOFT_RATE := 0.08
 const ROT_SOFT_RATE := 0.08
 
+enum BoostState { IDLE, PENDING, BOOSTING }
+
 var drift_charge: float = 0.0
 var boost_flash: bool = false
 var _was_star_drift_pressed := false
-var _boost_frames_remaining: int = 0
-var _boost_dir: Vector3 = Vector3.ZERO
-var _boost_frame_force: float = 0.0
+var _boost_state: int = BoostState.IDLE
+var _boost_t_remaining: float = 0.0
+var _boost_pending_t: float = 0.0
+var _boost_peak_speed: float = 0.0
 var _reversing := false
 
 var _server_pos       := Vector3.ZERO
@@ -75,13 +81,13 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var forward_dir := -self.transform.basis.z
-	var right_dir   :=  self.transform.basis.x
 
 	var throttle := Input.is_action_pressed("Throttle")
 	var steer    := Input.get_axis("Steering Left", "Steering Right")
 	var star_drift_input := Input.is_action_pressed("Star Drift")
 
-	var drift    := star_drift_input and self.linear_velocity.length() > 3.0
+	var speed := self.linear_velocity.length()
+	var drift := star_drift_input and speed > DRIFT_MIN_SPEED
 
 	var forward_speed := forward_dir.dot(self.linear_velocity)
 	if forward_speed <= -MOTION_DIRECTION_EPSILON:
@@ -109,17 +115,18 @@ func _physics_process(delta: float) -> void:
 	var yaw_error  := target_yaw - self.angular_velocity.y
 	apply_torque(Vector3.UP * yaw_error * STEER_P_GAIN)
 
-	var lateral_speed := right_dir.dot(self.linear_velocity)
-	var grip_cancel   := LATERAL_DRIFT if drift else LATERAL_GRIP
-	apply_central_impulse(-right_dir * lateral_speed * self.mass * grip_cancel)
+	# Velocity-vector slerp toward forward, magnitude preserved.
+	if speed > 0.5 and not self._reversing:
+		var cur_dir := self.linear_velocity / speed
+		var rate := ALIGN_RATE_DRIFT if drift else ALIGN_RATE_GRIP
+		var new_dir := _vec3_slerp_clamped(cur_dir, forward_dir, rate * delta)
+		self.linear_velocity = new_dir * speed
+
 	self.linear_damp = DRIFT_LINEAR_DAMP if drift else NORMAL_LINEAR_DAMP
 
-	var steer_amount := abs(effective_steer) as float
-	if steer_amount > 0.0 and forward_speed > 0.0:
-		var turn_drag := clampf(1.0 - TURN_DRAG_PER_STEER * steer_amount * delta, 0.0, 1.0)
-		var lateral_component := right_dir * lateral_speed
-		var forward_component := self.linear_velocity - lateral_component
-		self.linear_velocity = forward_component * turn_drag + lateral_component
+	# Boost FSM (mirrors server).
+	_update_boost_fsm(forward_dir, speed, star_drift_input, delta)
+	_was_star_drift_pressed = star_drift_input
 
 	if self._server_pos_valid:
 		self.global_position = self.global_position.lerp(self._server_pos, POS_SOFT_RATE)
@@ -137,36 +144,15 @@ func _physics_process(delta: float) -> void:
 	if _wheel_fr:
 		_wheel_fr.rotation_degrees.y = self.init_rot_wheel + self.delta_rot_wheel
 
-	# Drift charge: tracked from star_drift_input, not speed-gated drift
-	# so a momentary slowdown mid-corner doesn't interrupt the charge.
-	if star_drift_input:
-		drift_charge = minf(drift_charge + DRIFT_CHARGE_RATE * delta, 1.0)
-	elif _was_star_drift_pressed:
-		if drift_charge >= DRIFT_BOOST_MIN:
-			_boost_frames_remaining = DRIFT_BOOST_FRAMES
-			_boost_frame_force = DRIFT_BOOST_FORCE * drift_charge
-			_boost_dir = forward_dir
-			boost_flash = true
-		drift_charge = 0.0
-	else:
-		drift_charge = maxf(drift_charge - DRIFT_CHARGE_DECAY * delta, 0.0)
-	_was_star_drift_pressed = star_drift_input
-
-	# Spread boost force over several frames so server correction can't cancel it
-	if _boost_frames_remaining > 0:
-		apply_central_force(_boost_dir * _boost_frame_force)
-		_boost_frames_remaining -= 1
-
 	self.network_timer += delta
 	if self.network_timer >= NETWORK_SEND_INTERVAL:
 		self.network_timer = 0.0
 		self.network.send({
 			"State": {
-				# Tell the server to keep applying throttle during boost so it's authoritative
-				"throttle":    throttle or _boost_frames_remaining > 0,
+				"throttle":    throttle,
 				"steer_left":  max(-steer, 0.0),
 				"steer_right": max(steer, 0.0),
-				"star_drift":  drift
+				"star_drift":  star_drift_input
 			}
 		})
 
@@ -175,3 +161,55 @@ func apply_server_correction(server_pos: Vector3, server_rot: Quaternion) -> voi
 	self._server_pos_valid = true
 	self._server_rot       = server_rot
 	self._server_rot_valid = true
+
+func _vec3_slerp_clamped(from: Vector3, to: Vector3, max_angle: float) -> Vector3:
+	var d = clampf(from.dot(to), -1.0, 1.0)
+	var angle = acos(d)
+	if angle < 1e-4 or max_angle <= 0.0:
+		return from
+	var t := minf(max_angle / angle, 1.0)
+	var sin_a := sin(angle)
+	if absf(sin_a) < 1e-4:
+		return from
+	var a := sin((1.0 - t) * angle) / sin_a
+	var b := sin(t * angle) / sin_a
+	return from * a + to * b
+
+func _update_boost_fsm(forward_dir: Vector3, speed: float, star_drift_input: bool, delta: float) -> void:
+	if star_drift_input and speed > DRIFT_MIN_SPEED:
+		drift_charge = minf(drift_charge + BOOST_CHARGE_RATE * delta, 1.0)
+	elif _boost_state != BoostState.PENDING:
+		drift_charge = maxf(drift_charge - BOOST_CHARGE_DECAY * delta, 0.0)
+
+	var just_released := _was_star_drift_pressed and not star_drift_input
+
+	match _boost_state:
+		BoostState.IDLE:
+			if just_released and drift_charge >= BOOST_CHARGE_MIN:
+				_boost_state = BoostState.PENDING
+				_boost_pending_t = BOOST_PENDING_TIMEOUT
+		BoostState.PENDING:
+			_boost_pending_t -= delta
+			if star_drift_input:
+				_boost_state = BoostState.IDLE
+			elif _boost_pending_t <= 0.0:
+				_boost_state = BoostState.IDLE
+			elif speed > 1.0:
+				var vel_dir := self.linear_velocity / speed
+				if vel_dir.dot(forward_dir) >= BOOST_ALIGN_THRESHOLD_COS:
+					var base = maxf(speed, DRIFT_MIN_SPEED)
+					_boost_peak_speed = base + BOOST_PEAK_BONUS * drift_charge
+					var new_speed = maxf(_boost_peak_speed, speed)
+					self.linear_velocity = forward_dir * new_speed
+					_boost_state = BoostState.BOOSTING
+					_boost_t_remaining = BOOST_DURATION
+					drift_charge = 0.0
+					boost_flash = true
+		BoostState.BOOSTING:
+			_boost_t_remaining -= delta
+			if _boost_t_remaining <= 0.0:
+				_boost_state = BoostState.IDLE
+			else:
+				var fwd_speed := forward_dir.dot(self.linear_velocity)
+				if fwd_speed < _boost_peak_speed:
+					apply_central_force(forward_dir * BOOST_SUSTAIN_FORCE)

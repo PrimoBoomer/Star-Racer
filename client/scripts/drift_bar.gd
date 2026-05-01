@@ -10,6 +10,37 @@ const MARGIN    := 32.0    # inset from screen edges
 
 var _charge: float = 0.0
 var _boost_flash: float = 0.0
+var _speed_label: Label = null
+
+func _ready() -> void:
+	_speed_label = Label.new()
+	_speed_label.text = "0"
+	_speed_label.add_theme_font_size_override("font_size", 56)
+	_speed_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.98))
+	_speed_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+	_speed_label.add_theme_constant_override("outline_size", 6)
+	_speed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_speed_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	_speed_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	_speed_label.offset_left  = 24.0
+	_speed_label.offset_top   = -90.0
+	_speed_label.offset_right = 200.0
+	_speed_label.offset_bottom = -28.0
+	add_child(_speed_label)
+
+	var unit_label := Label.new()
+	unit_label.name = "SpeedUnit"
+	unit_label.text = "km/h"
+	unit_label.add_theme_font_size_override("font_size", 18)
+	unit_label.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0, 0.85))
+	unit_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+	unit_label.add_theme_constant_override("outline_size", 4)
+	unit_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	unit_label.offset_left  = 162.0
+	unit_label.offset_top   = -42.0
+	unit_label.offset_right = 220.0
+	unit_label.offset_bottom = -22.0
+	add_child(unit_label)
 
 func _process(delta: float) -> void:
 	var game := get_node_or_null("/root/Root/Game") as Game
@@ -20,10 +51,18 @@ func _process(delta: float) -> void:
 	visible = true
 
 	if game.car_node != null:
-		_charge = (game.car_node as RigidBody3D).get("drift_charge") as float
-		if (game.car_node as RigidBody3D).get("boost_flash") as bool:
+		var rb := game.car_node as RigidBody3D
+		_charge = rb.get("drift_charge") as float
+		if rb.get("boost_flash") as bool:
 			_boost_flash = 0.28
-			(game.car_node as RigidBody3D).set("boost_flash", false)
+			rb.set("boost_flash", false)
+		var v := rb.linear_velocity
+		var horiz_speed := Vector2(v.x, v.z).length()
+		var kmh := horiz_speed * 3.6
+		# Deadzone for physics jitter at rest.
+		if kmh < 1.0:
+			kmh = 0.0
+		_speed_label.text = "%d" % int(round(kmh))
 
 	if _boost_flash > 0.0:
 		_boost_flash -= delta
