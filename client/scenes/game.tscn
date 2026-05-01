@@ -4,6 +4,8 @@
 [ext_resource type="Script" uid="uid://bl7brkqwdge4k" path="res://scripts/network.gd" id="2_iywne"]
 [ext_resource type="Environment" uid="uid://bq0j3trnouuvl" path="res://env.tres" id="3_p57ef"]
 [ext_resource type="Script" uid="uid://dtpgdenatq2uo" path="res://scripts/ui.gd" id="4_u5sy4"]
+[ext_resource type="Shader" path="res://shaders/menu_bg.gdshader" id="5_menubg"]
+[ext_resource type="Script" path="res://scripts/drift_bar.gd" id="6_driftbar"]
 
 [sub_resource type="SystemFont" id="SystemFont_r5v3i"]
 font_names = PackedStringArray("Calibri")
@@ -61,6 +63,9 @@ corner_radius_top_right = 15
 corner_radius_bottom_right = 15
 corner_radius_bottom_left = 15
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_menubg"]
+shader = ExtResource("5_menubg")
+
 [node name="Root" type="Node" unique_id=426461752]
 
 [node name="Game" type="Node" parent="." unique_id=322353589]
@@ -88,6 +93,15 @@ grow_vertical = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("4_u5sy4")
+
+[node name="MenuBackground" type="ColorRect" parent="Game/UI" unique_id=700000001]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+material = SubResource("ShaderMaterial_menubg")
 
 [node name="AlphaInfo" type="Control" parent="Game/UI" unique_id=313684329]
 layout_mode = 1
@@ -165,30 +179,30 @@ horizontal_alignment = 2
 
 [node name="OnlineMenu" type="Panel" parent="Game/UI" unique_id=582721910]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -381.0
-offset_top = -239.0
-offset_right = 381.0
-offset_bottom = 239.0
+anchors_preset = -1
+anchor_left = 0.1
+anchor_top = 0.08
+anchor_right = 0.9
+anchor_bottom = 0.92
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_jahkg")
 
 [node name="Container" type="VBoxContainer" parent="Game/UI/OnlineMenu" unique_id=1845125114]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -337.0
-offset_top = -212.0
-offset_right = 337.0
-offset_bottom = 212.0
+anchors_preset = 15
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 16.0
+offset_right = -20.0
+offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 9
@@ -332,33 +346,31 @@ presets_visible = false
 
 [node name="IntermissionMenu" type="VBoxContainer" parent="Game/UI" unique_id=206048886]
 visible = false
-custom_minimum_size = Vector2(1100, 600)
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -550.0
-offset_top = -300.0
-offset_right = 550.0
-offset_bottom = 300.0
+anchors_preset = -1
+anchor_left = 0.05
+anchor_top = 0.04
+anchor_right = 0.95
+anchor_bottom = 0.96
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
 grow_horizontal = 2
 grow_vertical = 2
-scale = Vector2(1, 1.001)
 
 [node name="LobbyName" type="Label" parent="Game/UI/IntermissionMenu" unique_id=355730984]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.13621715, 0.7022942, 0.97834855, 1)
 theme_override_fonts/font = SubResource("SystemFont_hm561")
-theme_override_font_sizes/font_size = 80
+theme_override_font_sizes/font_size = 48
 text = "Lobbyname"
 horizontal_alignment = 1
 
 [node name="CurrentTrackname" type="Label" parent="Game/UI/IntermissionMenu" unique_id=1606305829]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.04046847, 0.5650511, 0.79937446, 1)
-theme_override_font_sizes/font_size = 41
+theme_override_font_sizes/font_size = 28
 text = "Trackname"
 horizontal_alignment = 1
 
@@ -402,10 +414,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -20.0
-offset_top = -20.0
-offset_right = 20.0
-offset_bottom = 20.0
+offset_left = -112.0
+offset_top = -54.0
+offset_right = 112.0
+offset_bottom = 54.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_30hyq")
@@ -435,6 +447,17 @@ custom_minimum_size = Vector2(150, 35)
 layout_mode = 2
 size_flags_vertical = 3
 text = "Leave"
+
+[node name="DriftBar" type="Control" parent="Game/UI" unique_id=700000002]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("6_driftbar")
 
 [connection signal="text_changed" from="Game/UI/OnlineMenu/Container/CreateLobbyMenu1/MinPlayersField" to="Game/UI" method="_on_min_players_field_text_changed"]
 [connection signal="text_changed" from="Game/UI/OnlineMenu/Container/CreateLobbyMenu1/MaxPlayersField" to="Game/UI" method="_on_max_players_field_text_changed"]

@@ -31,6 +31,7 @@ var tree_root: TreeItem
 @onready var network = %Network
 @onready var label_scene: PackedScene = load("res://scenes/label.tscn")
 @onready var countdown_label: Label = $IntermissionMenu/CountdownLabel
+@onready var menu_background: ColorRect = $MenuBackground
 
 var bindings_label: Label
 
@@ -138,8 +139,7 @@ func _setup_car_preview_panel() -> void:
 	svc.add_child(_car_preview_viewport)
 
 	var cam := Camera3D.new()
-	cam.position = Vector3(8.0, 5.0, 10.0)
-	cam.look_at(Vector3(0.0, 0.5, 0.0), Vector3.UP)
+	cam.look_at_from_position(Vector3(8.0, 5.0, 10.0), Vector3(0.0, 0.5, 0.0), Vector3.UP)
 	_car_preview_viewport.add_child(cam)
 
 	var light := DirectionalLight3D.new()
@@ -242,6 +242,7 @@ func switch_mode(next_mode: Game.Mode, server_up: bool):
 		self.alpha_info.visible = true
 		self.online_menu.visible = true
 		self.play_menu_panel.visible = false
+		self.menu_background.visible = true
 		self.info_label.text = ""
 		self.refresh_list_button.disabled = false
 		if self.star_racer.mode == Game.Mode.IN_RACE \
@@ -264,17 +265,20 @@ func switch_mode(next_mode: Game.Mode, server_up: bool):
 			child.queue_free()
 		self.intermission_menu.visible = true
 		self.online_menu.visible = false
+		self.menu_background.visible = true
 		self.info_label.text = ""
 	elif next_mode == Game.Mode.IN_RACE:
 		self.leave_button.grab_focus()
 		self.alpha_info.visible = false
 		self.online_menu.visible = false
 		self.intermission_menu.visible = false
+		self.menu_background.visible = false
 		self.info_label.text = ""
 	elif next_mode == Game.Mode.SPECTATOR:
 		self.alpha_info.visible = false
 		self.online_menu.visible = false
 		self.intermission_menu.visible = false
+		self.menu_background.visible = false
 		self.info_label.text = "Spectating — next race you'll be in"
 
 func _on_back_to_race_pressed() -> void:

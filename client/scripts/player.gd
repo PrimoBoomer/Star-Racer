@@ -14,9 +14,21 @@ const NORMAL_LINEAR_DAMP := 0.3
 const TURN_DRAG_PER_STEER := 0.06
 const DRIFT_LINEAR_DAMP  := 0.18
 
+const DRIFT_CHARGE_RATE  := 1.1    # charge/s while holding drift input
+const DRIFT_CHARGE_DECAY := 2.0    # decay/s when not holding drift
+const DRIFT_BOOST_MIN    := 0.25   # minimum charge to trigger boost
+const DRIFT_BOOST_FORCE  := 22_000.0  # per-frame force during boost window
+const DRIFT_BOOST_FRAMES := 14     # frames to apply force (~230 ms at 60 fps)
+
 const POS_SOFT_RATE := 0.08
 const ROT_SOFT_RATE := 0.08
 
+var drift_charge: float = 0.0
+var boost_flash: bool = false
+var _was_star_drift_pressed := false
+var _boost_frames_remaining: int = 0
+var _boost_dir: Vector3 = Vector3.ZERO
+var _boost_frame_force: float = 0.0
 var _reversing := false
 
 var _server_pos       := Vector3.ZERO
@@ -125,12 +137,33 @@ func _physics_process(delta: float) -> void:
 	if _wheel_fr:
 		_wheel_fr.rotation_degrees.y = self.init_rot_wheel + self.delta_rot_wheel
 
+	# Drift charge: tracked from star_drift_input, not speed-gated drift
+	# so a momentary slowdown mid-corner doesn't interrupt the charge.
+	if star_drift_input:
+		drift_charge = minf(drift_charge + DRIFT_CHARGE_RATE * delta, 1.0)
+	elif _was_star_drift_pressed:
+		if drift_charge >= DRIFT_BOOST_MIN:
+			_boost_frames_remaining = DRIFT_BOOST_FRAMES
+			_boost_frame_force = DRIFT_BOOST_FORCE * drift_charge
+			_boost_dir = forward_dir
+			boost_flash = true
+		drift_charge = 0.0
+	else:
+		drift_charge = maxf(drift_charge - DRIFT_CHARGE_DECAY * delta, 0.0)
+	_was_star_drift_pressed = star_drift_input
+
+	# Spread boost force over several frames so server correction can't cancel it
+	if _boost_frames_remaining > 0:
+		apply_central_force(_boost_dir * _boost_frame_force)
+		_boost_frames_remaining -= 1
+
 	self.network_timer += delta
 	if self.network_timer >= NETWORK_SEND_INTERVAL:
 		self.network_timer = 0.0
 		self.network.send({
 			"State": {
-				"throttle":    throttle,
+				# Tell the server to keep applying throttle during boost so it's authoritative
+				"throttle":    throttle or _boost_frames_remaining > 0,
 				"steer_left":  max(-steer, 0.0),
 				"steer_right": max(steer, 0.0),
 				"star_drift":  drift
