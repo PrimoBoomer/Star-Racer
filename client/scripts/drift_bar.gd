@@ -15,31 +15,33 @@ var _speed_label: Label = null
 func _ready() -> void:
 	_speed_label = Label.new()
 	_speed_label.text = "0"
-	_speed_label.add_theme_font_size_override("font_size", 56)
+	_speed_label.add_theme_font_size_override("font_size", 48)
 	_speed_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.98))
 	_speed_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 	_speed_label.add_theme_constant_override("outline_size", 6)
-	_speed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_speed_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	_speed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_speed_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_speed_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	_speed_label.offset_left  = 24.0
-	_speed_label.offset_top   = -90.0
-	_speed_label.offset_right = 200.0
-	_speed_label.offset_bottom = -28.0
+	# Center the number inside the arc (arc center = RADIUS+MARGIN, H-(RADIUS+MARGIN))
+	_speed_label.offset_left   = MARGIN
+	_speed_label.offset_top    = -(RADIUS + MARGIN + 34.0)
+	_speed_label.offset_right  = RADIUS * 2.0 + MARGIN
+	_speed_label.offset_bottom = -(MARGIN + 12.0)
 	add_child(_speed_label)
 
 	var unit_label := Label.new()
 	unit_label.name = "SpeedUnit"
 	unit_label.text = "km/h"
-	unit_label.add_theme_font_size_override("font_size", 18)
-	unit_label.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0, 0.85))
-	unit_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
-	unit_label.add_theme_constant_override("outline_size", 4)
+	unit_label.add_theme_font_size_override("font_size", 14)
+	unit_label.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0, 0.75))
+	unit_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	unit_label.add_theme_constant_override("outline_size", 3)
+	unit_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	unit_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	unit_label.offset_left  = 162.0
-	unit_label.offset_top   = -42.0
-	unit_label.offset_right = 220.0
-	unit_label.offset_bottom = -22.0
+	unit_label.offset_left   = MARGIN
+	unit_label.offset_top    = -(MARGIN + 28.0)
+	unit_label.offset_right  = RADIUS * 2.0 + MARGIN
+	unit_label.offset_bottom = -(MARGIN)
 	add_child(unit_label)
 
 func _process(delta: float) -> void:

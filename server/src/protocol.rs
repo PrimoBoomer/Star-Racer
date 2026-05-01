@@ -89,6 +89,7 @@ pub struct LobbyInfo {
     pub min_players: u8,
     pub max_players: u8,
     pub racing: bool,
+    pub track_name: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -252,6 +253,7 @@ mod tests {
             min_players: 2,
             max_players: 4,
             racing: false,
+            track_name: "Circuit One".into(),
         }]));
         let json = serde_json::to_string(&msg).unwrap();
         assert!(json.contains("LobbyList"));

@@ -540,6 +540,10 @@ impl Lobby {
         matches!(self.state, State::Racing)
     }
 
+    pub fn track_name(&self) -> &str {
+        &self.track.name
+    }
+
     fn process_player_events(&mut self, delta: f64) {
         let mut to_remove = Vec::new();
         let is_racing = self.is_racing();
@@ -599,6 +603,14 @@ impl Lobby {
             // velocity-aligned axis is -forward.
             let forward = *rb.rotation() * Vec3::new(0., 0., 1.);
             let forward_dir_world = -forward; // points in the direction the car is facing
+            // Horizontal projection of the car's facing direction. Used for velocity
+            // alignment and boost so ramps don't redirect velocity upward.
+            let horiz_forward = {
+                let mut h = forward_dir_world;
+                h.y = 0.0;
+                let l = h.length();
+                if l > 1e-4 { h / l } else { forward_dir_world }
+            };
 
             let forward_speed = -forward.dot(rb.linvel());
             racer.reversing = update_reverse_mode(
@@ -637,15 +649,17 @@ impl Lobby {
 
             rb.apply_torque_impulse(Vec3::new(0., yaw_error * STEER_P_GAIN * delta, 0.), true);
 
-            // Velocity-vector slerp toward forward, magnitude preserved.
-            // Replaces the old lateral-impulse cancellation.
+            // Slerp only the horizontal component of velocity toward horiz_forward.
+            // Y is preserved so gravity and ramp impulses still apply naturally.
             let vel = rb.linvel();
-            let vel_speed = vel.length();
-            if vel_speed > 0.5 && !racer.reversing {
-                let cur_dir = vel / vel_speed;
+            let vel_h = Vec3::new(vel.x, 0.0, vel.z);
+            let h_speed = vel_h.length();
+            if h_speed > 0.5 && !racer.reversing {
+                let cur_dir_h = vel_h / h_speed;
                 let rate = if is_drifting { ALIGN_RATE_DRIFT } else { ALIGN_RATE_GRIP };
-                let new_dir = vec3_slerp_clamped(cur_dir, forward_dir_world, rate * delta);
-                rb.set_linvel(new_dir * vel_speed, true);
+                let new_dir_h = vec3_slerp_clamped(cur_dir_h, horiz_forward, rate * delta);
+                let new_h = new_dir_h * h_speed;
+                rb.set_linvel(Vec3::new(new_h.x, vel.y, new_h.z), true);
             }
 
             rb.set_linear_damping(if is_drifting {
@@ -654,8 +668,9 @@ impl Lobby {
                 NORMAL_LINEAR_DAMPING
             });
 
-            // Boost FSM update.
-            update_boost_fsm(racer, rb, &forward_dir_world, speed, delta);
+            // Boost FSM update — pass horizontal forward so re-alignment detection
+            // and the boost impulse stay in the ground plane.
+            update_boost_fsm(racer, rb, &horiz_forward, speed, delta);
             racer.prev_star_drift = racer.input.star_drift;
         }
 

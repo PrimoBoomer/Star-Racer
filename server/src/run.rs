@@ -232,6 +232,7 @@ fn build_lobby_list(lobbies: &HashMap<String, Lobby>) -> Vec<LobbyInfo> {
             min_players: l.min_players,
             max_players: l.max_players,
             racing: l.is_racing(),
+            track_name: l.track_name().to_string(),
         })
         .collect()
 }
@@ -446,10 +447,12 @@ mod tests {
         assert_eq!(list[0].min_players, 1);
         assert_eq!(list[0].max_players, 8);
         assert!(!list[0].racing);
+        assert!(!list[0].track_name.is_empty());
 
         assert_eq!(list[1].name, "foo");
         assert_eq!(list[1].owner, "alice");
         assert_eq!(list[1].player_count, 0);
         assert!(!list[1].racing);
+        assert!(!list[1].track_name.is_empty());
     }
 }

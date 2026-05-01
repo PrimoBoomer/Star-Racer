@@ -275,6 +275,7 @@ var paused = false
 var _opponents: OpponentManager
 var _ghost: GhostManager
 var _spectator_camera: Camera3D = null
+var _spectator_target: Vector3 = Vector3.ZERO
 var _last_race_rankings: Array = []
 var _lobby_min_players: int = 2
 var _lobby_max_players: int = 4
@@ -302,6 +303,11 @@ func _process(delta):
 	if self.mode == Mode.IN_RACE || self.mode == Mode.SPECTATOR:
 		if self._opponents:
 			self._opponents.interpolate(delta)
+	if self.mode == Mode.SPECTATOR and self._spectator_camera != null:
+		var cam_goal := _spectator_target + Vector3(0.0, 22.0, 14.0)
+		self._spectator_camera.global_position = self._spectator_camera.global_position.lerp(cam_goal, delta * 3.5)
+		if _spectator_target != Vector3.ZERO:
+			self._spectator_camera.look_at(_spectator_target, Vector3.UP)
 
 func _notification(what):
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
@@ -552,12 +558,17 @@ func _handle_lobby_message(message: Dictionary) -> void:
 			self.car_node.global_position = spawn["position"]
 			self.car_node.global_rotation = Vector3(0.0, deg_to_rad(spawn["y_rotation"]), 0.0)
 
+			%UI.reset_start_lights()
+
 			if self.mode == Mode.SPECTATOR:
 				switch_mode(Mode.LOBBY_INTERMISSION, true)
 		if event.has("RaceStarted") && self.mode == Mode.LOBBY_INTERMISSION:
+			%UI.start_lights_go()
 			switch_mode(Mode.IN_RACE, true)
 		if event.has("Countdown"):
-			%UI.set_info_label("Start in %d..." % int(event["Countdown"]["time"]))
+			var t: float = float(event["Countdown"]["time"])
+			%UI.set_info_label("Start in %d..." % int(t))
+			%UI.start_lights_countdown(t)
 		if event.has("RaceFinished"):
 			var finished = event["RaceFinished"]
 			self._last_race_rankings = finished.get("rankings", [])
@@ -574,6 +585,7 @@ func _handle_lobby_message(message: Dictionary) -> void:
 					players.size(), self._lobby_max_players, self._lobby_min_players
 				])
 				%UI.set_intermission_players_list(players)
+			var _spectator_target_set := false
 			for raw in players:
 				var player = MessageParser.parse_player(raw)
 				if !player["racing"]:
@@ -591,6 +603,9 @@ func _handle_lobby_message(message: Dictionary) -> void:
 							%UI.set_info_label("Lap %d / 3" % (laps + 1))
 				else:
 					self._opponents.update(player)
+					if self.mode == Mode.SPECTATOR and not _spectator_target_set:
+						_spectator_target = player["position"]
+						_spectator_target_set = true
 		elif state.has("WaitingForPlayers"):
 			var missing = int(state["WaitingForPlayers"])
 			%UI.set_info_label("Waiting for %d player%s" % [missing, ("" if missing == 1 else "s")])

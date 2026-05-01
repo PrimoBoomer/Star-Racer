@@ -14,7 +14,7 @@ var tree_root: TreeItem
 @onready var join_button: Button = $OnlineMenu/Container/CreateLobbyMenu3/JoinButton
 @onready var create_button: Button = $OnlineMenu/Container/CreateLobbyMenu2/CreateButton
 @onready var leave_button: Button = $PlayMenuPanel/PlayMenu/LeaveButton
-@onready var back_button: Button = $IntermissionMenu/BackButton
+@onready var back_button: Button = $IntermissionMenu/Container/BackButton
 @onready var refresh_list_button: Button = $OnlineMenu/Container/CreateLobbyMenu3/RefreshListButton
 @onready var lobbies_list: Tree = $OnlineMenu/Container/LobbiesList
 @onready var info_label: Label = $InfoLabel
@@ -24,14 +24,16 @@ var tree_root: TreeItem
 @onready var alpha_info: Control = $AlphaInfo
 @onready var car_color_picker_panel: Panel = $ColorPickerPanel
 @onready var car_color_picker: ColorPicker = $ColorPickerPanel/ColorPicker
-@onready var players_in_lobby: VBoxContainer = $IntermissionMenu/Control/PlayersInLobby
-@onready var intermission_lobby_name: Label = $IntermissionMenu/LobbyName
-@onready var intermission_track_name: Label = $IntermissionMenu/CurrentTrackname
-@onready var intermission_players_list: VBoxContainer = $IntermissionMenu/Control/PlayersInLobby
+@onready var players_in_lobby: VBoxContainer = $IntermissionMenu/Container/Control/PlayersInLobby
+@onready var intermission_lobby_name: Label = $IntermissionMenu/Container/LobbyName
+@onready var intermission_track_name: Label = $IntermissionMenu/Container/CurrentTrackname
+@onready var intermission_players_count: Label = $IntermissionMenu/Container/PlayersCount
+@onready var intermission_players_list: VBoxContainer = $IntermissionMenu/Container/Control/PlayersInLobby
 @onready var network = %Network
 @onready var label_scene: PackedScene = load("res://scenes/label.tscn")
-@onready var countdown_label: Label = $IntermissionMenu/CountdownLabel
+@onready var countdown_label: Label = $IntermissionMenu/Container/CountdownLabel
 @onready var menu_background: ColorRect = $MenuBackground
+@onready var start_lights = $StartLights
 
 var bindings_label: Label
 
@@ -51,6 +53,7 @@ func _ready() -> void:
 	self.lobbies_list.set_column_title(3, "Min needed");
 	self.lobbies_list.set_column_title(4, "State");
 	self.lobbies_list.set_column_title(5, "Start time");
+	self.lobbies_list.set_column_title(6, "Track");
 
 	self.bindings_label = Label.new()
 	self.bindings_label.position = Vector2(12, 12)
@@ -347,6 +350,8 @@ func refresh(lobby_infos: Array):
 		item.set_text_alignment(4, HORIZONTAL_ALIGNMENT_CENTER)
 		item.set_text(5, info.start_time)
 		item.set_text_alignment(5, HORIZONTAL_ALIGNMENT_CENTER)
+		item.set_text(6, str(info.get("track_name", "")))
+		item.set_text_alignment(6, HORIZONTAL_ALIGNMENT_CENTER)
 
 func set_color_picker_button_color(color: Color) -> void:
 	var stylebox = StyleBoxFlat.new()
@@ -408,26 +413,78 @@ func set_intermission_lobby_name(str_name: String) -> void:
 func set_intermission_track_name(str_name: String) -> void:
 	self.intermission_track_name.text = str_name
 
-func add_player_to_lobby(player_name: String) -> void:
-	var label = Label.new()
-	label.text = player_name
-	self.players_in_lobby.add_child(label)
+func add_player_to_lobby(player_name: String, color: Color = Color(0.55, 0.78, 0.95)) -> void:
+	if self.players_in_lobby.get_node_or_null(player_name):
+		return
+	self.players_in_lobby.add_child(_make_pilot_chip(player_name, color))
 
 func clear_players_in_lobby() -> void:
 	for child in self.players_in_lobby.get_children():
 		child.queue_free()
 
 func set_intermission_players_count(str_count: String) -> void:
-	self.countdown_label.text = str_count
+	self.intermission_players_count.text = str_count
 
 func set_intermission_players_list(players: Array) -> void:
+	# Drop chips for players no longer in the lobby.
+	var present := {}
+	for player in players:
+		present[String(player["nickname"])] = true
+	for child in self.players_in_lobby.get_children():
+		if not present.has(child.name):
+			child.queue_free()
+
 	for player in players:
 		var nickname: String = player["nickname"]
-		if ! self.players_in_lobby.get_node_or_null(nickname):
-			var label: Label = self.label_scene.instantiate()
-			label.text = nickname
-			label.name = nickname
-			self.players_in_lobby.add_child(label)
+		if self.players_in_lobby.get_node_or_null(nickname):
+			continue
+		var col := Color(0.55, 0.78, 0.95)
+		if player.has("color"):
+			var raw = player["color"]
+			if raw is Color:
+				col = raw
+			elif raw is Dictionary:
+				col = Color(float(raw.get("x", 0.55)), float(raw.get("y", 0.78)), float(raw.get("z", 0.95)))
+		self.players_in_lobby.add_child(_make_pilot_chip(nickname, col))
+
+func _make_pilot_chip(nickname: String, color: Color) -> PanelContainer:
+	var chip := PanelContainer.new()
+	chip.name = nickname
+	chip.size_flags_horizontal = SIZE_FILL
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.07, 0.13, 0.22, 0.78)
+	sb.set_border_width_all(1)
+	sb.border_color = color
+	sb.border_width_left = 6
+	sb.set_corner_radius_all(10)
+	sb.content_margin_left = 14.0
+	sb.content_margin_right = 14.0
+	sb.content_margin_top = 6.0
+	sb.content_margin_bottom = 6.0
+	chip.add_theme_stylebox_override("panel", sb)
+
+	var hbox := HBoxContainer.new()
+	chip.add_child(hbox)
+
+	var dot := ColorRect.new()
+	dot.color = color
+	dot.custom_minimum_size = Vector2(14, 14)
+	dot.size_flags_vertical = SIZE_SHRINK_CENTER
+	hbox.add_child(dot)
+
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(10, 0)
+	hbox.add_child(spacer)
+
+	var label := Label.new()
+	label.text = nickname
+	label.add_theme_font_size_override("font_size", 18)
+	label.add_theme_color_override("font_color", Color(0.92, 0.96, 1.0))
+	label.size_flags_horizontal = SIZE_EXPAND_FILL
+	hbox.add_child(label)
+
+	return chip
 
 func get_play_menu_panel():
 	return self.play_menu_panel
@@ -438,6 +495,18 @@ func get_selected_lobby_name() -> String:
 
 func set_info_label(text: String):
 	self.info_label.text = text
+
+func reset_start_lights() -> void:
+	if self.start_lights:
+		self.start_lights.reset()
+
+func start_lights_countdown(time_sec: float) -> void:
+	if self.start_lights:
+		self.start_lights.on_countdown(time_sec)
+
+func start_lights_go() -> void:
+	if self.start_lights:
+		self.start_lights.on_race_started()
 
 func show_race_results(rankings: Array) -> void:
 	for child in self.players_in_lobby.get_children():

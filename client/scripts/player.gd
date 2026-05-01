@@ -81,6 +81,14 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var forward_dir := -self.transform.basis.z
+	# Horizontal projection of forward — used for velocity alignment and boost so
+	# ramps don't redirect velocity skyward.
+	var horiz_forward := Vector3(forward_dir.x, 0.0, forward_dir.z)
+	var hf_len := horiz_forward.length()
+	if hf_len > 1e-4:
+		horiz_forward /= hf_len
+	else:
+		horiz_forward = forward_dir
 
 	var throttle := Input.is_action_pressed("Throttle")
 	var steer    := Input.get_axis("Steering Left", "Steering Right")
@@ -115,17 +123,22 @@ func _physics_process(delta: float) -> void:
 	var yaw_error  := target_yaw - self.angular_velocity.y
 	apply_torque(Vector3.UP * yaw_error * STEER_P_GAIN)
 
-	# Velocity-vector slerp toward forward, magnitude preserved.
-	if speed > 0.5 and not self._reversing:
-		var cur_dir := self.linear_velocity / speed
+	# Slerp only the horizontal component of velocity. Y is preserved so gravity
+	# and ramp impulses still apply naturally (no hovering on ramp exits).
+	var v := self.linear_velocity
+	var v_h := Vector3(v.x, 0.0, v.z)
+	var h_speed := v_h.length()
+	if h_speed > 0.5 and not self._reversing:
+		var cur_dir_h := v_h / h_speed
 		var rate := ALIGN_RATE_DRIFT if drift else ALIGN_RATE_GRIP
-		var new_dir := _vec3_slerp_clamped(cur_dir, forward_dir, rate * delta)
-		self.linear_velocity = new_dir * speed
+		var new_dir_h := _vec3_slerp_clamped(cur_dir_h, horiz_forward, rate * delta)
+		var new_h := new_dir_h * h_speed
+		self.linear_velocity = Vector3(new_h.x, v.y, new_h.z)
 
 	self.linear_damp = DRIFT_LINEAR_DAMP if drift else NORMAL_LINEAR_DAMP
 
-	# Boost FSM (mirrors server).
-	_update_boost_fsm(forward_dir, speed, star_drift_input, delta)
+	# Boost FSM (mirrors server) — uses horizontal forward.
+	_update_boost_fsm(horiz_forward, speed, star_drift_input, delta)
 	_was_star_drift_pressed = star_drift_input
 
 	if self._server_pos_valid:
