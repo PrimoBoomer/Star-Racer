@@ -114,50 +114,52 @@ static func _make_pad(parent: Node3D, prim: Dictionary) -> void:
 	root.position = pos
 	parent.add_child(root)
 
-	# Visible plane on top of the pad surface (Y = pad top + epsilon).
-	var pad_mat := StandardMaterial3D.new()
-	pad_mat.albedo_color = PAD_BASE_COLOR
-	pad_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	# Oriented visual: chevrons point along heading. The Area3D sensor stays
+	# axis-aligned (server matches the AABB), so only the visuals get rotated.
+	var visual := Node3D.new()
+	visual.position.y = -size.y * 0.5
+	visual.rotation.y = atan2(heading.x, -heading.z)
+	root.add_child(visual)
 
-	var pad_mesh := PlaneMesh.new()
-	pad_mesh.size = Vector2(size.x, size.z)
-	pad_mesh.material = pad_mat
+	# Local dome dims (along chevron-forward axis = local Z).
+	var width  := size.x
+	var length := size.z
+	var dome_h := minf(size.y * 0.45, 0.35)
 
-	var pad_mi := MeshInstance3D.new()
-	pad_mi.mesh = pad_mesh
-	pad_mi.position.y = -size.y * 0.5 + 0.02
-	root.add_child(pad_mi)
+	# Domed base — transverse arch you drive over.
+	var dome_mat := StandardMaterial3D.new()
+	dome_mat.albedo_color = PAD_BASE_COLOR
+	dome_mat.roughness = 0.45
+	dome_mat.metallic  = 0.25
+	var dome_mi := MeshInstance3D.new()
+	dome_mi.mesh = _build_dome_mesh(width, length, dome_h, 16, 6)
+	dome_mi.set_surface_override_material(0, dome_mat)
+	visual.add_child(dome_mi)
 
-	# Direction arrow.
-	var arrow_mat := StandardMaterial3D.new()
-	arrow_mat.albedo_color = PAD_ARROW_COLOR
-	arrow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	# Three chevrons stepped along length, sitting just above the dome surface.
+	var chev_mat := StandardMaterial3D.new()
+	chev_mat.albedo_color = PAD_ARROW_COLOR
+	chev_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	chev_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 
-	var shaft_mesh := BoxMesh.new()
-	shaft_mesh.size = Vector3(1.2, 0.08, 4.5)
-	shaft_mesh.material = arrow_mat
+	var chev_w := width * 0.62
+	var chev_l := length * 0.18
+	var chev_t := width * 0.10
+	var chev_mesh := _build_chevron_mesh(chev_w, chev_l, chev_t)
 
-	var head_mesh := BoxMesh.new()
-	head_mesh.size = Vector3(3.5, 0.08, 2.5)
-	head_mesh.material = arrow_mat
+	var slots := [-0.30, 0.0, 0.30]  # fractions of length
+	for i in slots.size():
+		var f: float = slots[i]
+		var z_off := f * length
+		# Y on dome at this Z (dome bumps along local X, which is uniform along Z).
+		var y_top := dome_h + 0.02
+		var chev := MeshInstance3D.new()
+		chev.mesh = chev_mesh
+		chev.set_surface_override_material(0, chev_mat)
+		chev.position = Vector3(0.0, y_top, z_off)
+		visual.add_child(chev)
 
-	var arrow := Node3D.new()
-	arrow.position.y = -size.y * 0.5 + 0.06
-	arrow.rotation.y = atan2(heading.x, -heading.z)
-	root.add_child(arrow)
-
-	var shaft_mi := MeshInstance3D.new()
-	shaft_mi.mesh = shaft_mesh
-	shaft_mi.position.z = 1.5
-	arrow.add_child(shaft_mi)
-
-	var head_mi := MeshInstance3D.new()
-	head_mi.mesh = head_mesh
-	head_mi.position.z = -1.0
-	arrow.add_child(head_mi)
-
-	# Sensor area for collision-side parity (server is authoritative for boost).
-	# We still create it client-side for visual consistency / future client-side effects.
+	# Sensor area: full pad volume, axis-aligned (matches server).
 	var sensor := Area3D.new()
 	sensor.name = "%s_sensor" % nm
 	root.add_child(sensor)
@@ -167,3 +169,104 @@ static func _make_pad(parent: Node3D, prim: Dictionary) -> void:
 	shape.size = size
 	cs.shape = shape
 	sensor.add_child(cs)
+
+
+# Builds a transverse-arched plane (bump along X, flat along Z).
+# Returns an ArrayMesh with normals.
+static func _build_dome_mesh(width: float, length: float, height: float,
+		w_segs: int, l_segs: int) -> ArrayMesh:
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var uvs   := PackedVector2Array()
+	var idx   := PackedInt32Array()
+
+	for j in range(l_segs + 1):
+		var v := float(j) / float(l_segs)
+		var z := (v - 0.5) * length
+		for i in range(w_segs + 1):
+			var u := float(i) / float(w_segs)
+			var x := (u - 0.5) * width
+			var t := (u - 0.5) * 2.0          # -1..1
+			var y := height * (1.0 - t * t)   # parabolic arch
+			verts.append(Vector3(x, y, z))
+			# Normal of y = h*(1 - t^2) wrt x: dy/dx = -2*h*t / (width/2)
+			var slope := -2.0 * height * t / (width * 0.5)
+			var n := Vector3(-slope, 1.0, 0.0).normalized()
+			norms.append(n)
+			uvs.append(Vector2(u, v))
+
+	for j in range(l_segs):
+		for i in range(w_segs):
+			var a := j * (w_segs + 1) + i
+			var b := a + 1
+			var c := a + (w_segs + 1)
+			var d := c + 1
+			idx.append(a); idx.append(c); idx.append(b)
+			idx.append(b); idx.append(c); idx.append(d)
+
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = norms
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_INDEX]  = idx
+
+	var am := ArrayMesh.new()
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return am
+
+
+# Flat chevron `>` shape in the XZ plane, pointing toward +Z.
+# `width` = total span along X, `length` = depth along Z, `thickness` = arm width.
+static func _build_chevron_mesh(width: float, length: float, thickness: float) -> ArrayMesh:
+	var hw := width * 0.5
+	var hl := length * 0.5
+	# Two parallelogram arms meeting at the tip (0, 0, +hl).
+	# Each arm: outer edge from (±hw, 0, -hl) → tip (0, 0, hl).
+	# Inner edge offset by `thickness` along arm-normal.
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var uvs   := PackedVector2Array()
+	var idx   := PackedInt32Array()
+
+	var up := Vector3.UP
+
+	# Right arm: from base-right (hw, 0, -hl) to tip (0, 0, hl).
+	var br := Vector3(hw, 0, -hl)
+	var tp := Vector3(0, 0, hl)
+	var dir_r := (tp - br).normalized()
+	var nrm_r := Vector3(-dir_r.z, 0, dir_r.x).normalized()  # left-of-arm in XZ
+	var br_in := br + nrm_r * thickness
+	var tp_in_r := tp + nrm_r * thickness
+
+	# Left arm: mirror.
+	var bl := Vector3(-hw, 0, -hl)
+	var dir_l := (tp - bl).normalized()
+	var nrm_l := Vector3(-dir_l.z, 0, dir_l.x).normalized()  # right-of-arm = inward
+	var bl_in := bl - nrm_l * thickness   # invert sign so inset goes toward center
+	var tp_in_l := tp - nrm_l * thickness
+
+	var base_idx := verts.size()
+	verts.append(br); verts.append(br_in); verts.append(tp_in_r); verts.append(tp)
+	for k in 4:
+		norms.append(up); uvs.append(Vector2(0, 0))
+	idx.append(base_idx + 0); idx.append(base_idx + 1); idx.append(base_idx + 2)
+	idx.append(base_idx + 0); idx.append(base_idx + 2); idx.append(base_idx + 3)
+
+	base_idx = verts.size()
+	verts.append(bl); verts.append(tp); verts.append(tp_in_l); verts.append(bl_in)
+	for k in 4:
+		norms.append(up); uvs.append(Vector2(0, 0))
+	idx.append(base_idx + 0); idx.append(base_idx + 1); idx.append(base_idx + 2)
+	idx.append(base_idx + 0); idx.append(base_idx + 2); idx.append(base_idx + 3)
+
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = norms
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_INDEX]  = idx
+
+	var am := ArrayMesh.new()
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return am
