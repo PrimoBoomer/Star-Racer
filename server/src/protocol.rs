@@ -286,4 +286,36 @@ mod tests {
         assert!(json.contains("alice"));
         assert!(json.contains("bob"));
     }
+
+    #[test]
+    fn lobby_joined_response_serializes_with_race_ongoing() {
+        let msg = ServerMessage::Response(Response::LobbyJoined {
+            track_id: "circuit_one".into(),
+            race_ongoing: true,
+            min_players: 2,
+            max_players: 4,
+            error: None,
+            track: None,
+        });
+        let json = serde_json::to_string(&msg).unwrap();
+        assert!(json.contains("LobbyJoined"));
+        assert!(json.contains("\"race_ongoing\":true"));
+        assert!(json.contains("circuit_one"));
+    }
+
+    #[test]
+    fn lobby_info_serializes_track_name() {
+        let msg = ServerMessage::Response(Response::LobbyList(vec![LobbyInfo {
+            name: "foo".into(),
+            owner: "alice".into(),
+            start_time: "12:00".into(),
+            player_count: 1,
+            min_players: 2,
+            max_players: 4,
+            racing: false,
+            track_name: "Circuit One".into(),
+        }]));
+        let json = serde_json::to_string(&msg).unwrap();
+        assert!(json.contains("\"track_name\":\"Circuit One\""));
+    }
 }

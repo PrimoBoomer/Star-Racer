@@ -38,11 +38,10 @@ var tree_root: TreeItem
 var bindings_label: Label
 
 var _car_model_idx: int = 0
-var _car_model_button: Button = null
 var _car_model_label: Label = null
-var _car_preview_panel: Panel = null
 var _car_preview_viewport: SubViewport = null
 var _car_preview_node: Node3D = null
+var _pilot_color_rect: ColorRect = null
 
 var _track_picker: OptionButton = null
 
@@ -64,18 +63,129 @@ func _ready() -> void:
 	self.bindings_label.visible = false
 	add_child(self.bindings_label)
 
-	_setup_car_model_picker()
-	_setup_car_preview_panel()
+	self.car_color_button.visible = false
+	_setup_pilot_panel()
 	_setup_track_picker()
 
-func _setup_car_model_picker() -> void:
-	var player_options := $OnlineMenu/Container/PlayerOptions as HBoxContainer
+func _setup_pilot_panel() -> void:
+	var container := $OnlineMenu/Container as VBoxContainer
 
-	_car_model_button = Button.new()
-	_car_model_button.text = "Pick car model"
-	_car_model_button.size_flags_horizontal = SIZE_EXPAND_FILL
-	_car_model_button.pressed.connect(_on_car_model_button_pressed)
-	player_options.add_child(_car_model_button)
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.04, 0.08, 0.16, 0.60)
+	sb.set_border_width_all(1)
+	sb.border_color = Color(0.34, 0.55, 0.78, 0.45)
+	sb.set_corner_radius_all(10)
+	sb.content_margin_left = 12.0; sb.content_margin_right = 12.0
+	sb.content_margin_top = 10.0;  sb.content_margin_bottom = 10.0
+	panel.add_theme_stylebox_override("panel", sb)
+	container.add_child(panel)
+
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 14)
+	panel.add_child(hbox)
+
+	# 3D preview
+	var svc := SubViewportContainer.new()
+	svc.custom_minimum_size = Vector2(170, 140)
+	svc.size_flags_horizontal = SIZE_SHRINK_CENTER
+	svc.stretch = true
+	hbox.add_child(svc)
+
+	_car_preview_viewport = SubViewport.new()
+	_car_preview_viewport.size = Vector2i(170, 140)
+	_car_preview_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_car_preview_viewport.transparent_bg = false
+	svc.add_child(_car_preview_viewport)
+
+	var cam := Camera3D.new()
+	cam.look_at_from_position(Vector3(8.0, 5.0, 10.0), Vector3(0.0, 0.5, 0.0), Vector3.UP)
+	_car_preview_viewport.add_child(cam)
+
+	var dir_light := DirectionalLight3D.new()
+	dir_light.rotation = Vector3(-PI / 4.0, PI / 4.0, 0.0)
+	dir_light.shadow_enabled = false
+	dir_light.light_energy = 1.2
+	_car_preview_viewport.add_child(dir_light)
+
+	var fill_light := OmniLight3D.new()
+	fill_light.position = Vector3(-5.0, 3.0, -3.0)
+	fill_light.light_energy = 0.4
+	_car_preview_viewport.add_child(fill_light)
+
+	var wenv := WorldEnvironment.new()
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.08, 0.10, 0.16)
+	env.ambient_light_color = Color(0.75, 0.80, 0.90)
+	env.ambient_light_energy = 0.5
+	wenv.environment = env
+	_car_preview_viewport.add_child(wenv)
+
+	# Right column
+	var right := VBoxContainer.new()
+	right.size_flags_horizontal = SIZE_EXPAND_FILL
+	right.size_flags_vertical = SIZE_SHRINK_CENTER
+	right.add_theme_constant_override("separation", 8)
+	hbox.add_child(right)
+
+	var model_hdr := Label.new()
+	model_hdr.text = "MODÈLE"
+	model_hdr.add_theme_font_size_override("font_size", 12)
+	model_hdr.add_theme_color_override("font_color", Color(0.55, 0.78, 0.95, 0.75))
+	right.add_child(model_hdr)
+
+	var nav := HBoxContainer.new()
+	nav.add_theme_constant_override("separation", 6)
+	right.add_child(nav)
+
+	var prev_btn := Button.new()
+	prev_btn.text = "‹"
+	prev_btn.custom_minimum_size = Vector2(34, 32)
+	prev_btn.pressed.connect(_on_car_prev)
+	nav.add_child(prev_btn)
+
+	_car_model_label = Label.new()
+	_car_model_label.size_flags_horizontal = SIZE_EXPAND_FILL
+	_car_model_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_car_model_label.text = Game.CAR_MODELS[0]["name"]
+	nav.add_child(_car_model_label)
+
+	var next_btn := Button.new()
+	next_btn.text = "›"
+	next_btn.custom_minimum_size = Vector2(34, 32)
+	next_btn.pressed.connect(_on_car_next)
+	nav.add_child(next_btn)
+
+	var spacer := Control.new()
+	spacer.size_flags_vertical = SIZE_EXPAND_FILL
+	right.add_child(spacer)
+
+	var color_hdr := Label.new()
+	color_hdr.text = "COULEUR"
+	color_hdr.add_theme_font_size_override("font_size", 12)
+	color_hdr.add_theme_color_override("font_color", Color(0.55, 0.78, 0.95, 0.75))
+	right.add_child(color_hdr)
+
+	var color_row := HBoxContainer.new()
+	color_row.add_theme_constant_override("separation", 8)
+	right.add_child(color_row)
+
+	_pilot_color_rect = ColorRect.new()
+	_pilot_color_rect.color = Color(1, 1, 1)
+	_pilot_color_rect.custom_minimum_size = Vector2(32, 32)
+	_pilot_color_rect.size_flags_vertical = SIZE_SHRINK_CENTER
+	color_row.add_child(_pilot_color_rect)
+
+	var color_btn := Button.new()
+	color_btn.text = "Choisir…"
+	color_btn.size_flags_horizontal = SIZE_EXPAND_FILL
+	color_btn.pressed.connect(func():
+		car_color_picker_panel.visible = not car_color_picker_panel.visible
+	)
+	color_row.add_child(color_btn)
+
+	_update_car_preview()
 
 func _setup_track_picker() -> void:
 	var menu1 := $OnlineMenu/Container/CreateLobbyMenu1 as HBoxContainer
@@ -88,85 +198,6 @@ func _setup_track_picker() -> void:
 	_track_picker.disabled = true
 	_track_picker.add_item("(loading...)")
 	menu1.add_child(_track_picker)
-
-func _setup_car_preview_panel() -> void:
-	_car_preview_panel = Panel.new()
-	_car_preview_panel.visible = false
-	_car_preview_panel.custom_minimum_size = Vector2(300, 290)
-	_car_preview_panel.layout_mode = 0
-	_car_preview_panel.offset_left = 280.0
-	_car_preview_panel.offset_top = 178.0
-	_car_preview_panel.offset_right = 580.0
-	_car_preview_panel.offset_bottom = 468.0
-
-	var vbox := VBoxContainer.new()
-	vbox.set_anchor(SIDE_LEFT, 0); vbox.set_anchor(SIDE_RIGHT, 1)
-	vbox.set_anchor(SIDE_TOP, 0);  vbox.set_anchor(SIDE_BOTTOM, 1)
-	vbox.offset_left = 8; vbox.offset_right = -8
-	vbox.offset_top = 8;  vbox.offset_bottom = -8
-	_car_preview_panel.add_child(vbox)
-
-	var nav_hbox := HBoxContainer.new()
-	nav_hbox.size_flags_horizontal = SIZE_EXPAND_FILL
-	nav_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	vbox.add_child(nav_hbox)
-
-	var prev_btn := Button.new()
-	prev_btn.text = "<"
-	prev_btn.custom_minimum_size = Vector2(40, 34)
-	prev_btn.pressed.connect(_on_car_prev)
-	nav_hbox.add_child(prev_btn)
-
-	_car_model_label = Label.new()
-	_car_model_label.size_flags_horizontal = SIZE_EXPAND_FILL
-	_car_model_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_car_model_label.text = Game.CAR_MODELS[0]["name"]
-	nav_hbox.add_child(_car_model_label)
-
-	var next_btn := Button.new()
-	next_btn.text = ">"
-	next_btn.custom_minimum_size = Vector2(40, 34)
-	next_btn.pressed.connect(_on_car_next)
-	nav_hbox.add_child(next_btn)
-
-	var svc := SubViewportContainer.new()
-	svc.size_flags_horizontal = SIZE_EXPAND_FILL
-	svc.size_flags_vertical = SIZE_EXPAND_FILL
-	svc.stretch = true
-	vbox.add_child(svc)
-
-	_car_preview_viewport = SubViewport.new()
-	_car_preview_viewport.size = Vector2i(284, 240)
-	_car_preview_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	_car_preview_viewport.transparent_bg = false
-	svc.add_child(_car_preview_viewport)
-
-	var cam := Camera3D.new()
-	cam.look_at_from_position(Vector3(8.0, 5.0, 10.0), Vector3(0.0, 0.5, 0.0), Vector3.UP)
-	_car_preview_viewport.add_child(cam)
-
-	var light := DirectionalLight3D.new()
-	light.rotation = Vector3(-PI / 4.0, PI / 4.0, 0.0)
-	light.shadow_enabled = false
-	light.light_energy = 1.2
-	_car_preview_viewport.add_child(light)
-
-	var fill_light := OmniLight3D.new()
-	fill_light.position = Vector3(-5.0, 3.0, -3.0)
-	fill_light.light_energy = 0.4
-	_car_preview_viewport.add_child(fill_light)
-
-	var wenv := WorldEnvironment.new()
-	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.10, 0.13, 0.18)
-	env.ambient_light_color = Color(0.75, 0.80, 0.90)
-	env.ambient_light_energy = 0.5
-	wenv.environment = env
-	_car_preview_viewport.add_child(wenv)
-
-	add_child(_car_preview_panel)
-	_update_car_preview()
 
 func _update_car_preview() -> void:
 	if _car_preview_viewport == null:
@@ -185,10 +216,6 @@ func _update_car_preview() -> void:
 
 	if _car_model_label != null:
 		_car_model_label.text = model_def["name"]
-
-func _on_car_model_button_pressed() -> void:
-	_car_preview_panel.visible = !_car_preview_panel.visible
-	_car_model_button.text = "Close car picker" if _car_preview_panel.visible else "Pick car model"
 
 func _on_car_prev() -> void:
 	_car_model_idx = (_car_model_idx - 1 + Game.CAR_MODELS.size()) % Game.CAR_MODELS.size()
@@ -354,15 +381,8 @@ func refresh(lobby_infos: Array):
 		item.set_text_alignment(6, HORIZONTAL_ALIGNMENT_CENTER)
 
 func set_color_picker_button_color(color: Color) -> void:
-	var stylebox = StyleBoxFlat.new()
-	stylebox.bg_color = color
-	stylebox.corner_radius_top_left = 15
-	stylebox.corner_radius_top_right = 15
-	stylebox.corner_radius_bottom_left = 15
-	stylebox.corner_radius_bottom_right = 15
-	self.car_color_button.add_theme_stylebox_override("normal", stylebox)
-	self.car_color_button.add_theme_stylebox_override("hover", stylebox)
-	self.car_color_button.add_theme_stylebox_override("pressed", stylebox)
+	if _pilot_color_rect:
+		_pilot_color_rect.color = color
 
 func _on_refresh_list_button_pressed() -> void:
 	%Game.switch_mode(Game.Mode.FETCH_LOBBIES, false)
@@ -405,7 +425,7 @@ func set_nickname(value: String) -> void:
 
 func set_car_color(value: Color) -> void:
 	self.car_color_picker.color = value
-	self.car_color_button.text = "Close color picker"
+	set_color_picker_button_color(value)
 
 func set_intermission_lobby_name(str_name: String) -> void:
 	self.intermission_lobby_name.text = str_name

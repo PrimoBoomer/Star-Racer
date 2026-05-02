@@ -52,12 +52,12 @@ shadow_color = Color(0.20, 0.45, 0.85, 0.32)
 shadow_size = 22
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_intermission"]
-bg_color = Color(0.04, 0.07, 0.14, 0.86)
+bg_color = Color(0.04, 0.07, 0.14, 0.38)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.34, 0.66, 0.92, 0.65)
+border_color = Color(0.34, 0.66, 0.92, 0.80)
 corner_radius_top_left = 22
 corner_radius_top_right = 22
 corner_radius_bottom_right = 22
@@ -730,13 +730,13 @@ visible = false
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
-anchor_top = 0.18
+anchor_top = 0.76
 anchor_right = 0.5
-anchor_bottom = 0.18
+anchor_bottom = 0.76
 offset_left = -200.0
-offset_top = -60.0
+offset_top = -50.0
 offset_right = 200.0
-offset_bottom = 60.0
+offset_bottom = 50.0
 mouse_filter = 2
 script = ExtResource("7_startlights")
 

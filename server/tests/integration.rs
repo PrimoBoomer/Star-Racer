@@ -267,7 +267,18 @@ async fn join_existing_lobby_succeeds_and_increments_count() {
     )
     .await;
     match next_response(&mut joiner).await {
-        Response::LobbyJoined { error, .. } => assert!(error.is_none()),
+        Response::LobbyJoined {
+            error,
+            track_id,
+            race_ongoing,
+            track,
+            ..
+        } => {
+            assert!(error.is_none());
+            assert_eq!(track_id, "circuit_one");
+            assert!(!race_ongoing);
+            assert!(track.is_some(), "track def should be sent on successful join");
+        }
         _ => panic!("expected LobbyJoined"),
     }
 
@@ -279,6 +290,7 @@ async fn join_existing_lobby_succeeds_and_increments_count() {
         Response::LobbyList(list) => {
             let info = list.iter().find(|l| l.name == "room").unwrap();
             assert_eq!(info.player_count, 2);
+            assert!(!info.track_name.is_empty());
         }
         _ => panic!("expected LobbyList"),
     }

@@ -10,61 +10,47 @@ const MARGIN    := 32.0    # inset from screen edges
 
 var _charge: float = 0.0
 var _boost_flash: float = 0.0
-var _speed_label: Label = null
+var _speed_kmh: int = 0
+var _prev_pos: Vector3 = Vector3.ZERO
+var _prev_pos_valid := false
+var _kmh_smoothed: float = 0.0
 
 func _ready() -> void:
-	_speed_label = Label.new()
-	_speed_label.text = "0"
-	_speed_label.add_theme_font_size_override("font_size", 48)
-	_speed_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.98))
-	_speed_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
-	_speed_label.add_theme_constant_override("outline_size", 6)
-	_speed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_speed_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_speed_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	# Center the number inside the arc (arc center = RADIUS+MARGIN, H-(RADIUS+MARGIN))
-	_speed_label.offset_left   = MARGIN
-	_speed_label.offset_top    = -(RADIUS + MARGIN + 34.0)
-	_speed_label.offset_right  = RADIUS * 2.0 + MARGIN
-	_speed_label.offset_bottom = -(MARGIN + 12.0)
-	add_child(_speed_label)
-
-	var unit_label := Label.new()
-	unit_label.name = "SpeedUnit"
-	unit_label.text = "km/h"
-	unit_label.add_theme_font_size_override("font_size", 14)
-	unit_label.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0, 0.75))
-	unit_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	unit_label.add_theme_constant_override("outline_size", 3)
-	unit_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	unit_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	unit_label.offset_left   = MARGIN
-	unit_label.offset_top    = -(MARGIN + 28.0)
-	unit_label.offset_right  = RADIUS * 2.0 + MARGIN
-	unit_label.offset_bottom = -(MARGIN)
-	add_child(unit_label)
+	pass
 
 func _process(delta: float) -> void:
 	var game := get_node_or_null("/root/Root/Game") as Game
 	if game == null or game.mode != Game.Mode.IN_RACE:
 		visible = false
+		_prev_pos_valid = false
 		return
 
 	visible = true
 
-	if game.car_node != null:
+	if game.car_node != null and delta > 0.0:
 		var rb := game.car_node as RigidBody3D
 		_charge = rb.get("drift_charge") as float
 		if rb.get("boost_flash") as bool:
 			_boost_flash = 0.28
 			rb.set("boost_flash", false)
-		var v := rb.linear_velocity
-		var horiz_speed := Vector2(v.x, v.z).length()
-		var kmh := horiz_speed * 3.6
-		# Deadzone for physics jitter at rest.
+
+		# Speed via position delta — reliable even when global_position is
+		# being written directly for server reconciliation (which leaves
+		# linear_velocity stale).
+		var pos := rb.global_position
+		var inst_kmh := 0.0
+		if _prev_pos_valid:
+			var d := Vector2(pos.x - _prev_pos.x, pos.z - _prev_pos.z).length()
+			inst_kmh = (d / delta) * 3.6
+		_prev_pos = pos
+		_prev_pos_valid = true
+
+		# Low-pass filter to hide per-frame jitter.
+		_kmh_smoothed = lerp(_kmh_smoothed, inst_kmh, clampf(delta * 12.0, 0.0, 1.0))
+		var kmh := _kmh_smoothed
 		if kmh < 1.0:
 			kmh = 0.0
-		_speed_label.text = "%d" % int(round(kmh))
+		_speed_kmh = int(round(kmh))
 
 	if _boost_flash > 0.0:
 		_boost_flash -= delta
@@ -80,6 +66,8 @@ func _draw() -> void:
 	# Background track
 	draw_arc(center, RADIUS, from_rad, to_rad, 80,
 		Color(0.05, 0.10, 0.22, 0.65), THICKNESS, true)
+
+	_draw_speed()
 
 	if _charge <= 0.002:
 		return
@@ -103,6 +91,17 @@ func _draw() -> void:
 	# Tip dot at the leading edge
 	var tip := center + Vector2(cos(fill_end), sin(fill_end)) * RADIUS
 	draw_circle(tip, THICKNESS * 0.58, arc_c)
+
+func _draw_speed() -> void:
+	var font := ThemeDB.fallback_font
+	var center := Vector2(RADIUS + MARGIN, size.y - RADIUS - MARGIN)
+	var spd_str := "%d" % _speed_kmh
+	var spd_size := font.get_string_size(spd_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 48)
+	draw_string(font, center + Vector2(-spd_size.x * 0.5, spd_size.y * 0.28),
+		spd_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 48, Color(1, 1, 1, 0.98))
+	var unit_size := font.get_string_size("km/h", HORIZONTAL_ALIGNMENT_LEFT, -1, 14)
+	draw_string(font, center + Vector2(-unit_size.x * 0.5, RADIUS * 0.55),
+		"km/h", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.75, 0.85, 1.0, 0.75))
 
 func _arc_color(t: float) -> Color:
 	if t < 0.5:

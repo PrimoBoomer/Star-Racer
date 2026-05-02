@@ -1495,4 +1495,10 @@ mod tests {
         let mut lobby = Lobby::new("alice".into(), "12:00".into(), 1, 4, test_track());
         assert!(!lobby.update(1.0 / 60.0));
     }
+
+    #[test]
+    fn lobby_track_name_returns_underlying_track_name() {
+        let lobby = Lobby::new("alice".into(), "12:00".into(), 1, 4, test_track());
+        assert_eq!(lobby.track_name(), test_track().name);
+    }
 }

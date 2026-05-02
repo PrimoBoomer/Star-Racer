@@ -425,6 +425,7 @@ mod tests {
     #[test]
     fn build_lobby_list_maps_each_lobby_to_info() {
         let track = Arc::new(crate::track::TrackDef::from_json(include_str!("../tracks/circuit_one.json")).unwrap());
+        let track_name = track.name.clone();
         let mut lobbies = HashMap::new();
         lobbies.insert(
             "foo".to_string(),
@@ -447,12 +448,12 @@ mod tests {
         assert_eq!(list[0].min_players, 1);
         assert_eq!(list[0].max_players, 8);
         assert!(!list[0].racing);
-        assert!(!list[0].track_name.is_empty());
+        assert_eq!(list[0].track_name, track_name);
 
         assert_eq!(list[1].name, "foo");
         assert_eq!(list[1].owner, "alice");
         assert_eq!(list[1].player_count, 0);
         assert!(!list[1].racing);
-        assert!(!list[1].track_name.is_empty());
+        assert_eq!(list[1].track_name, track_name);
     }
 }
