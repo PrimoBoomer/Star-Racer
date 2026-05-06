@@ -8,8 +8,8 @@ class_name TrackLoader
 ## `parent` is the node under which all primitives are added.
 ## Returns { "spawn_pos": Vector3, "spawn_y_rotation_deg": float }.
 
-const FLOOR_DEFAULT_COLOR := Color(0.3, 0.3, 0.3)
-const WALL_DEFAULT_COLOR  := Color(0.55, 0.55, 0.6)
+const FLOOR_DEFAULT_COLOR := Color(0.18, 0.20, 0.22)
+const WALL_DEFAULT_COLOR  := Color(0.32, 0.35, 0.45)
 const PAD_BASE_COLOR      := Color(0.10, 0.30, 0.95)
 const PAD_ARROW_COLOR     := Color(1.0, 0.9, 0.1)
 const HAZARD_DEFAULT_COLOR := Color(0.85, 0.15, 0.15)
@@ -59,7 +59,8 @@ static func _make_concrete_mat() -> StandardMaterial3D:
 	mat.albedo_texture = load("res://tracks/circuit_one/concrete_color.png")
 	mat.normal_enabled = true
 	mat.normal_texture = load("res://tracks/circuit_one/concrete_normal.png")
-	mat.roughness = 0.9
+	mat.roughness = 0.4
+	mat.metallic = 0.3
 	mat.uv1_scale = Vector3(3.0, 3.0, 3.0)
 	return mat
 

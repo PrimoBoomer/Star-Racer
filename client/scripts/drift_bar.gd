@@ -6,7 +6,7 @@ const THICKNESS := 13.0
 const ARC_FROM  := 205.0   # deg – lower-left direction
 const ARC_SPAN  := 230.0   # deg – ends upper-right
 
-const MARGIN    := 110.0   # inset from screen edges
+const MARGIN    := 24.0   # inset from screen edges
 
 var _charge: float = 0.0
 var _boost_flash: float = 0.0

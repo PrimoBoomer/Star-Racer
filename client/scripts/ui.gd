@@ -87,19 +87,19 @@ func _setup_pilot_panel() -> void:
 
 	# 3D preview
 	var svc := SubViewportContainer.new()
-	svc.custom_minimum_size = Vector2(300, 230)
+	svc.custom_minimum_size = Vector2(480, 370)
 	svc.size_flags_horizontal = SIZE_SHRINK_CENTER
 	svc.stretch = true
 	hbox.add_child(svc)
 
 	_car_preview_viewport = SubViewport.new()
-	_car_preview_viewport.size = Vector2i(300, 230)
+	_car_preview_viewport.size = Vector2i(480, 370)
 	_car_preview_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_car_preview_viewport.transparent_bg = false
 	svc.add_child(_car_preview_viewport)
 
 	var cam := Camera3D.new()
-	cam.look_at_from_position(Vector3(8.0, 5.0, 10.0), Vector3(0.0, 0.5, 0.0), Vector3.UP)
+	cam.look_at_from_position(Vector3(5.5, 3.5, 7.0), Vector3(0.0, 0.5, 0.0), Vector3.UP)
 	_car_preview_viewport.add_child(cam)
 
 	var dir_light := DirectionalLight3D.new()

@@ -1,7 +1,7 @@
 extends Camera3D
 
-const FOLLOW_DIST   := 7.0
-const FOLLOW_HEIGHT := 2.8
+const FOLLOW_DIST   := 5.0
+const FOLLOW_HEIGHT := 2.2
 const LOOK_HEIGHT   := 1.0
 
 const YAW_RATE_GRIP  := 25.0
