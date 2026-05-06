@@ -23,6 +23,9 @@ const BOOST_ALIGN_THRESHOLD_COS := 0.9781476  # cos(12°)
 const BOOST_PENDING_TIMEOUT := 1.5
 const BOOST_SUSTAIN_FORCE  := 30_000.0
 
+const ROCKET_WINDOW_S := 0.5
+const ROCKET_BONUS    := 22.0
+
 const POS_SOFT_RATE := 0.08
 const ROT_SOFT_RATE := 0.08
 
@@ -187,6 +190,25 @@ func _vec3_slerp_clamped(from: Vector3, to: Vector3, max_angle: float) -> Vector
 	var a := sin((1.0 - t) * angle) / sin_a
 	var b := sin(t * angle) / sin_a
 	return from * a + to * b
+
+func try_rocket_start(delta_t: float) -> void:
+	if absf(delta_t) > ROCKET_WINDOW_S:
+		return
+	var quality := 1.0 - absf(delta_t) / ROCKET_WINDOW_S
+	var forward_dir := -self.transform.basis.z
+	var horiz_forward := Vector3(forward_dir.x, 0.0, forward_dir.z)
+	var hf_len := horiz_forward.length()
+	if hf_len > 1e-4:
+		horiz_forward /= hf_len
+	else:
+		horiz_forward = forward_dir
+	var current := self.linear_velocity.length()
+	_boost_peak_speed = maxf(current, DRIFT_MIN_SPEED) + ROCKET_BONUS * quality
+	self.linear_velocity = horiz_forward * _boost_peak_speed
+	_boost_state = BoostState.BOOSTING
+	_boost_t_remaining = BOOST_DURATION
+	drift_charge = 0.0
+	boost_flash = true
 
 func _update_boost_fsm(forward_dir: Vector3, speed: float, star_drift_input: bool, delta: float) -> void:
 	if star_drift_input and speed > DRIFT_MIN_SPEED:

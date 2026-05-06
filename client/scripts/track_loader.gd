@@ -14,6 +14,9 @@ const PAD_BASE_COLOR      := Color(0.10, 0.30, 0.95)
 const PAD_ARROW_COLOR     := Color(1.0, 0.9, 0.1)
 const HAZARD_DEFAULT_COLOR := Color(0.85, 0.15, 0.15)
 
+const CURVE_SLAB_THICKNESS := 0.3
+const CURVE_DEFAULT_SEGMENTS := 12
+
 
 static func build(parent: Node3D, track_def: Dictionary) -> Dictionary:
 	var floor_mat: StandardMaterial3D = load("res://tracks/circuit_one/floor_mat.tres")
@@ -31,6 +34,8 @@ static func build(parent: Node3D, track_def: Dictionary) -> Dictionary:
 				_make_static_box(parent, prim, HAZARD_DEFAULT_COLOR, true)
 			"pad":
 				_make_pad(parent, prim)
+			"curve":
+				_make_curve(parent, prim, FLOOR_DEFAULT_COLOR, floor_mat)
 			_:
 				push_warning("TrackLoader: unknown primitive type '%s'" % kind)
 
@@ -56,11 +61,14 @@ static func _color_from_array(arr, default: Color) -> Color:
 
 static func _make_concrete_mat() -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
-	mat.albedo_texture = load("res://tracks/circuit_one/concrete_color.png")
+	mat.albedo_color = Color(0.50, 0.55, 0.65, 1.0)
+	mat.albedo_texture = load("res://tracks/circuit_one/wall_metal_color.png")
 	mat.normal_enabled = true
-	mat.normal_texture = load("res://tracks/circuit_one/concrete_normal.png")
-	mat.roughness = 0.4
-	mat.metallic = 0.3
+	mat.normal_texture = load("res://tracks/circuit_one/wall_metal_normal.png")
+	mat.roughness_texture = load("res://tracks/circuit_one/wall_metal_roughness.png")
+	mat.roughness = 1.0
+	mat.metallic = 0.55
+	mat.metallic_specular = 0.5
 	mat.uv1_scale = Vector3(3.0, 3.0, 3.0)
 	return mat
 
@@ -260,6 +268,114 @@ static func _build_chevron_mesh(width: float, length: float, thickness: float) -
 		norms.append(up); uvs.append(Vector2(0, 0))
 	idx.append(base_idx + 0); idx.append(base_idx + 1); idx.append(base_idx + 2)
 	idx.append(base_idx + 0); idx.append(base_idx + 2); idx.append(base_idx + 3)
+
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = norms
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_INDEX]  = idx
+
+	var am := ArrayMesh.new()
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return am
+
+
+# Curved ramp: quarter-circle cross-section in the local YZ plane.
+# Surface goes from (x, 0, 0) at t=0 to (x, height, length) at t=π/2 along
+# P(t) = (0, height*(1 - cos t), length*sin t). Width spans local X.
+# Server tessellates the same way; keep formulas in sync.
+static func _make_curve(parent: Node3D, prim: Dictionary, default_color: Color, override_mat: StandardMaterial3D) -> void:
+	var size := _vec3_from_array(prim.get("size", []))
+	var pos  := _vec3_from_array(prim.get("position", []))
+	var rot  := _vec3_from_array(prim.get("rotation_deg", []), Vector3.ZERO)
+	var color := _color_from_array(prim.get("color", null), default_color)
+	var nm: String = prim.get("name", "curve")
+	var segments: int = int(prim.get("segments", CURVE_DEFAULT_SEGMENTS))
+	if segments < 1:
+		segments = 1
+
+	var width := size.x
+	var height := size.y
+	var length := size.z
+
+	var body := StaticBody3D.new()
+	body.name = nm
+	body.position = pos
+	body.rotation_degrees = rot
+
+	var mi := MeshInstance3D.new()
+	mi.mesh = _build_curve_mesh(width, height, length, segments)
+	if override_mat != null:
+		mi.set_surface_override_material(0, override_mat)
+	else:
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = color
+		mat.roughness = 0.8
+		mat.metallic = 0.1
+		mi.set_surface_override_material(0, mat)
+	body.add_child(mi)
+
+	for i in segments:
+		var t0 := float(i) / float(segments) * (PI * 0.5)
+		var t1 := float(i + 1) / float(segments) * (PI * 0.5)
+		var z0 := length * sin(t0)
+		var y0 := height * (1.0 - cos(t0))
+		var z1 := length * sin(t1)
+		var y1 := height * (1.0 - cos(t1))
+		var dz := z1 - z0
+		var dy := y1 - y0
+		var chord_len := sqrt(dz * dz + dy * dy)
+		if chord_len < 1e-6:
+			continue
+
+		var pitch := atan2(-dy, dz)
+		var nz := -dy / chord_len
+		var ny := dz / chord_len
+
+		var mid_z := 0.5 * (z0 + z1) - nz * (CURVE_SLAB_THICKNESS * 0.5)
+		var mid_y := 0.5 * (y0 + y1) - ny * (CURVE_SLAB_THICKNESS * 0.5)
+
+		var cs := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = Vector3(width, CURVE_SLAB_THICKNESS, chord_len)
+		cs.shape = box
+		cs.position = Vector3(0.0, mid_y, mid_z)
+		cs.rotation = Vector3(pitch, 0.0, 0.0)
+		body.add_child(cs)
+
+	parent.add_child(body)
+
+
+static func _build_curve_mesh(width: float, height: float, length: float, segments: int) -> ArrayMesh:
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var uvs   := PackedVector2Array()
+	var idx   := PackedInt32Array()
+
+	var hw := width * 0.5
+	for i in range(segments + 1):
+		var t := float(i) / float(segments) * (PI * 0.5)
+		var z := length * sin(t)
+		var y := height * (1.0 - cos(t))
+		var n := Vector3(0.0, cos(t), -sin(t)).normalized()
+		var v := float(i) / float(segments)
+
+		verts.append(Vector3(-hw, y, z))
+		norms.append(n)
+		uvs.append(Vector2(0.0, v))
+
+		verts.append(Vector3(hw, y, z))
+		norms.append(n)
+		uvs.append(Vector2(1.0, v))
+
+	for i in range(segments):
+		var a := i * 2
+		var b := a + 1
+		var c := a + 2
+		var d := a + 3
+		idx.append(a); idx.append(c); idx.append(b)
+		idx.append(b); idx.append(c); idx.append(d)
 
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)

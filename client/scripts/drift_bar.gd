@@ -6,8 +6,6 @@ const THICKNESS := 13.0
 const ARC_FROM  := 205.0   # deg – lower-left direction
 const ARC_SPAN  := 230.0   # deg – ends upper-right
 
-const MARGIN    := 24.0   # inset from screen edges
-
 var _charge: float = 0.0
 var _boost_flash: float = 0.0
 var _speed_kmh: int = 0
@@ -58,8 +56,8 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _draw() -> void:
-	# Bottom-left corner, inset by MARGIN
-	var center := Vector2(RADIUS + MARGIN, size.y - RADIUS - MARGIN)
+	# Bottom, just left of screen-centre — sits next to the car.
+	var center := Vector2(size.x * 0.5 - RADIUS - 20.0, size.y - RADIUS - 24.0)
 	var from_rad := deg_to_rad(ARC_FROM)
 	var to_rad   := from_rad + deg_to_rad(ARC_SPAN)
 
@@ -94,7 +92,7 @@ func _draw() -> void:
 
 func _draw_speed() -> void:
 	var font := ThemeDB.fallback_font
-	var center := Vector2(RADIUS + MARGIN, size.y - RADIUS - MARGIN)
+	var center := Vector2(size.x * 0.5 - RADIUS - 20.0, size.y - RADIUS - 24.0)
 	var spd_str := "%d" % _speed_kmh
 	var spd_size := font.get_string_size(spd_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 48)
 	draw_string(font, center + Vector2(-spd_size.x * 0.5, spd_size.y * 0.28),

@@ -66,6 +66,7 @@ func _ready() -> void:
 	self.car_color_button.visible = false
 	_setup_pilot_panel()
 	_setup_track_picker()
+	_setup_field_filters()
 
 func _setup_pilot_panel() -> void:
 	var container := $OnlineMenu/Container as VBoxContainer
@@ -76,30 +77,31 @@ func _setup_pilot_panel() -> void:
 	sb.set_border_width_all(1)
 	sb.border_color = Color(0.34, 0.55, 0.78, 0.45)
 	sb.set_corner_radius_all(10)
-	sb.content_margin_left = 12.0; sb.content_margin_right = 12.0
-	sb.content_margin_top = 10.0;  sb.content_margin_bottom = 10.0
+	sb.content_margin_left = 8.0; sb.content_margin_right = 8.0
+	sb.content_margin_top = 2.0;  sb.content_margin_bottom = 2.0
 	panel.add_theme_stylebox_override("panel", sb)
 	container.add_child(panel)
 
 	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 14)
+	hbox.add_theme_constant_override("separation", 10)
 	panel.add_child(hbox)
 
 	# 3D preview
 	var svc := SubViewportContainer.new()
-	svc.custom_minimum_size = Vector2(480, 370)
+	svc.custom_minimum_size = Vector2(640, 140)
 	svc.size_flags_horizontal = SIZE_SHRINK_CENTER
 	svc.stretch = true
 	hbox.add_child(svc)
 
 	_car_preview_viewport = SubViewport.new()
-	_car_preview_viewport.size = Vector2i(480, 370)
+	_car_preview_viewport.size = Vector2i(640, 140)
 	_car_preview_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_car_preview_viewport.transparent_bg = false
 	svc.add_child(_car_preview_viewport)
 
 	var cam := Camera3D.new()
-	cam.look_at_from_position(Vector3(5.5, 3.5, 7.0), Vector3(0.0, 0.5, 0.0), Vector3.UP)
+	cam.keep_aspect = Camera3D.KEEP_WIDTH
+	cam.look_at_from_position(Vector3(4.6, 3.0, 5.8), Vector3(0.0, 0.5, 0.0), Vector3.UP)
 	_car_preview_viewport.add_child(cam)
 
 	var dir_light := DirectionalLight3D.new()
@@ -131,8 +133,10 @@ func _setup_pilot_panel() -> void:
 
 	var model_hdr := Label.new()
 	model_hdr.text = "MODÈLE"
-	model_hdr.add_theme_font_size_override("font_size", 12)
-	model_hdr.add_theme_color_override("font_color", Color(0.55, 0.78, 0.95, 0.75))
+	model_hdr.add_theme_font_size_override("font_size", 22)
+	model_hdr.add_theme_color_override("font_color", Color(1.0, 0.95, 0.55, 1.0))
+	model_hdr.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1.0))
+	model_hdr.add_theme_constant_override("outline_size", 8)
 	right.add_child(model_hdr)
 
 	var nav := HBoxContainer.new()
@@ -149,6 +153,10 @@ func _setup_pilot_panel() -> void:
 	_car_model_label.size_flags_horizontal = SIZE_EXPAND_FILL
 	_car_model_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_car_model_label.text = Game.CAR_MODELS[0]["name"]
+	_car_model_label.add_theme_font_size_override("font_size", 30)
+	_car_model_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+	_car_model_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1.0))
+	_car_model_label.add_theme_constant_override("outline_size", 10)
 	nav.add_child(_car_model_label)
 
 	var next_btn := Button.new()
@@ -163,8 +171,10 @@ func _setup_pilot_panel() -> void:
 
 	var color_hdr := Label.new()
 	color_hdr.text = "COULEUR"
-	color_hdr.add_theme_font_size_override("font_size", 12)
-	color_hdr.add_theme_color_override("font_color", Color(0.55, 0.78, 0.95, 0.75))
+	color_hdr.add_theme_font_size_override("font_size", 22)
+	color_hdr.add_theme_color_override("font_color", Color(1.0, 0.95, 0.55, 1.0))
+	color_hdr.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1.0))
+	color_hdr.add_theme_constant_override("outline_size", 8)
 	right.add_child(color_hdr)
 
 	var color_row := HBoxContainer.new()
@@ -186,6 +196,43 @@ func _setup_pilot_panel() -> void:
 	color_row.add_child(color_btn)
 
 	_update_car_preview()
+
+func _setup_field_filters() -> void:
+	self.min_players_field.max_length = 1
+	self.max_players_field.max_length = 1
+	self.lobby_name_field.max_length = 20
+	self.nickname_field.max_length = 20
+	self.min_players_field.text_changed.connect(_filter_digit_field.bind(self.min_players_field))
+	self.max_players_field.text_changed.connect(_filter_digit_field.bind(self.max_players_field))
+	self.lobby_name_field.text_changed.connect(_filter_name_field.bind(self.lobby_name_field))
+	self.nickname_field.text_changed.connect(_filter_name_field.bind(self.nickname_field))
+
+func _filter_digit_field(new_text: String, field: LineEdit) -> void:
+	var filtered := ""
+	for ch in new_text:
+		if ch >= "0" and ch <= "9":
+			filtered += ch
+	if filtered != new_text:
+		var caret := field.caret_column
+		field.text = filtered
+		field.caret_column = mini(caret, filtered.length())
+
+func _filter_name_field(new_text: String, field: LineEdit) -> void:
+	var filtered := ""
+	for i in new_text.length():
+		var ch := new_text[i]
+		var is_alpha := (ch >= "A" and ch <= "Z") or (ch >= "a" and ch <= "z")
+		var is_digit := ch >= "0" and ch <= "9"
+		var is_underscore := ch == "_"
+		if filtered.length() == 0:
+			if is_alpha:
+				filtered += ch
+		elif is_alpha or is_digit or is_underscore:
+			filtered += ch
+	if filtered != new_text:
+		var caret := field.caret_column
+		field.text = filtered
+		field.caret_column = mini(caret, filtered.length())
 
 func _setup_track_picker() -> void:
 	var menu1 := $OnlineMenu/Container/CreateLobbyMenu1 as HBoxContainer

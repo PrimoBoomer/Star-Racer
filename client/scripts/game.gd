@@ -275,6 +275,12 @@ var _spectator_target: Vector3 = Vector3.ZERO
 var _last_race_rankings: Array = []
 var _lobby_min_players: int = 2
 var _lobby_max_players: int = 4
+
+# Rocket start: capture first Throttle press around the final beep.
+var _rocket_armed: bool = false
+var _rocket_press_msec: int = -1
+var _rocket_race_start_msec: int = -1
+var _rocket_dispatched: bool = false
 var regex = RegEx.new()
 
 func _init():
@@ -304,6 +310,18 @@ func _process(delta):
 		self._spectator_camera.global_position = self._spectator_camera.global_position.lerp(cam_goal, delta * 3.5)
 		if _spectator_target != Vector3.ZERO:
 			self._spectator_camera.look_at(_spectator_target, Vector3.UP)
+
+	if self._rocket_armed and not self._rocket_dispatched:
+		if self._rocket_press_msec == -1 and Input.is_action_just_pressed("Throttle"):
+			self._rocket_press_msec = Time.get_ticks_msec()
+		if self._rocket_race_start_msec >= 0:
+			if self._rocket_press_msec >= 0:
+				var dt := float(self._rocket_press_msec - self._rocket_race_start_msec) / 1000.0
+				if self.car_node and self.car_node.has_method("try_rocket_start"):
+					self.car_node.try_rocket_start(dt)
+				self._rocket_dispatched = true
+			elif (Time.get_ticks_msec() - self._rocket_race_start_msec) > 500:
+				self._rocket_dispatched = true
 
 func _notification(what):
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
@@ -556,10 +574,16 @@ func _handle_lobby_message(message: Dictionary) -> void:
 
 			%UI.reset_start_lights()
 
+			self._rocket_armed = true
+			self._rocket_press_msec = -1
+			self._rocket_race_start_msec = -1
+			self._rocket_dispatched = false
+
 			if self.mode == Mode.SPECTATOR:
 				switch_mode(Mode.LOBBY_INTERMISSION, true)
 		if event.has("RaceStarted") && self.mode == Mode.LOBBY_INTERMISSION:
 			%UI.start_lights_go()
+			self._rocket_race_start_msec = Time.get_ticks_msec()
 			switch_mode(Mode.IN_RACE, true)
 		if event.has("Countdown"):
 			var t: float = float(event["Countdown"]["time"])

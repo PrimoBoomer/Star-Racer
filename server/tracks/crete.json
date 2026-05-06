@@ -1,0 +1,167 @@
+{
+  "id": "crete",
+  "name": "Crête",
+  "spawn": {
+    "position": [140.0, 2.5, 0.0],
+    "y_rotation_deg": 0.0
+  },
+  "lap": {
+    "finish_x": 140.0,
+    "finish_half_width": 30.0,
+    "checkpoint_x": -145.0,
+    "checkpoint_half_width": 30.0,
+    "positive_z_threshold": 50.0,
+    "laps_to_win": 3
+  },
+  "primitives": [
+    {
+      "type": "floor",
+      "name": "safety_net",
+      "size": [600.0, 1.0, 600.0],
+      "position": [0.0, -40.0, 0.0],
+      "color": [0.05, 0.06, 0.09]
+    },
+
+    {
+      "type": "floor",
+      "name": "start_plateau",
+      "size": [80.0, 1.0, 60.0],
+      "position": [140.0, -0.5, 0.0]
+    },
+    {
+      "type": "wall",
+      "name": "start_rail_east",
+      "size": [4.0, 1.5, 60.0],
+      "position": [182.0, 0.75, 0.0]
+    },
+    {
+      "type": "wall",
+      "name": "start_rail_west",
+      "size": [4.0, 1.5, 60.0],
+      "position": [98.0, 0.75, 0.0]
+    },
+    {
+      "type": "pad",
+      "name": "pad_start",
+      "size": [10.0, 4.0, 10.0],
+      "position": [140.0, 2.0, -8.0],
+      "heading": [0.0, 0.0, -1.0]
+    },
+
+    {
+      "type": "curve",
+      "name": "kicker_south",
+      "size": [30.0, 2.5, 8.0],
+      "position": [140.0, 0.0, -22.0],
+      "rotation_deg": [0.0, 180.0, 0.0],
+      "segments": 12
+    },
+
+    {
+      "type": "floor",
+      "name": "valley_plateau",
+      "size": [220.0, 1.0, 100.0],
+      "position": [60.0, -2.5, -100.0]
+    },
+    {
+      "type": "wall",
+      "name": "valley_rail_south",
+      "size": [220.0, 1.5, 4.0],
+      "position": [60.0, -1.25, -152.0]
+    },
+    {
+      "type": "pad",
+      "name": "pad_valley",
+      "size": [10.0, 4.0, 10.0],
+      "position": [-20.0, 0.0, -100.0],
+      "heading": [-1.0, 0.0, 0.0]
+    },
+
+    {
+      "type": "floor",
+      "name": "climb_ramp",
+      "size": [50.0, 1.0, 30.0],
+      "position": [-75.0, 3.0, -100.0],
+      "rotation_deg": [0.0, 0.0, -11.31]
+    },
+
+    {
+      "type": "floor",
+      "name": "high_mesa",
+      "size": [70.0, 1.0, 60.0],
+      "position": [-145.0, 7.5, 0.0]
+    },
+    {
+      "type": "wall",
+      "name": "mesa_rail_west",
+      "size": [4.0, 1.5, 60.0],
+      "position": [-182.0, 8.75, 0.0]
+    },
+    {
+      "type": "wall",
+      "name": "mesa_rail_south",
+      "size": [70.0, 1.5, 4.0],
+      "position": [-145.0, 8.75, -32.0]
+    },
+    {
+      "type": "pad",
+      "name": "pad_mesa",
+      "size": [10.0, 4.0, 10.0],
+      "position": [-160.0, 10.0, 10.0],
+      "heading": [0.0, 0.0, 1.0]
+    },
+
+    {
+      "type": "floor",
+      "name": "mesa_to_bridge_ramp",
+      "size": [12.0, 1.0, 18.0],
+      "position": [-145.0, 6.0, 39.0],
+      "rotation_deg": [12.53, 0.0, 0.0]
+    },
+
+    {
+      "type": "floor",
+      "name": "bridge",
+      "size": [10.0, 1.0, 35.0],
+      "position": [-145.0, 3.5, 65.5],
+      "color": [0.45, 0.50, 0.62]
+    },
+
+    {
+      "type": "floor",
+      "name": "north_plateau",
+      "size": [240.0, 1.0, 60.0],
+      "position": [-25.0, 1.5, 100.0]
+    },
+    {
+      "type": "wall",
+      "name": "north_rail",
+      "size": [240.0, 1.5, 4.0],
+      "position": [-25.0, 2.75, 132.0]
+    },
+    {
+      "type": "pad",
+      "name": "pad_north",
+      "size": [10.0, 4.0, 10.0],
+      "position": [60.0, 4.0, 100.0],
+      "heading": [1.0, 0.0, 0.0]
+    },
+
+    {
+      "type": "curve",
+      "name": "kicker_north",
+      "size": [30.0, 2.5, 8.0],
+      "position": [105.0, 2.0, 100.0],
+      "rotation_deg": [0.0, -90.0, 0.0],
+      "segments": 12
+    },
+
+    {
+      "type": "floor",
+      "name": "north_to_start_ramp",
+      "size": [40.0, 1.0, 20.0],
+      "position": [125.0, 1.0, 60.0],
+      "rotation_deg": [-11.31, 90.0, 0.0]
+    }
+  ]
+}
