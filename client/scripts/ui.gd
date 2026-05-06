@@ -87,13 +87,13 @@ func _setup_pilot_panel() -> void:
 
 	# 3D preview
 	var svc := SubViewportContainer.new()
-	svc.custom_minimum_size = Vector2(170, 140)
+	svc.custom_minimum_size = Vector2(300, 230)
 	svc.size_flags_horizontal = SIZE_SHRINK_CENTER
 	svc.stretch = true
 	hbox.add_child(svc)
 
 	_car_preview_viewport = SubViewport.new()
-	_car_preview_viewport.size = Vector2i(170, 140)
+	_car_preview_viewport.size = Vector2i(300, 230)
 	_car_preview_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_car_preview_viewport.transparent_bg = false
 	svc.add_child(_car_preview_viewport)
@@ -515,6 +515,12 @@ func get_selected_lobby_name() -> String:
 
 func set_info_label(text: String):
 	self.info_label.text = text
+
+func show_pre_race_view() -> void:
+	self.intermission_menu.visible = false
+	self.online_menu.visible = false
+	self.alpha_info.visible = false
+	self.menu_background.visible = false
 
 func reset_start_lights() -> void:
 	if self.start_lights:

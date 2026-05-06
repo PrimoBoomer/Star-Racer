@@ -1,0 +1,50 @@
+[gd_scene format=3 uid="uid://cfuturecar000"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
+radius = 0.9
+height = 4.4
+
+[sub_resource type="BoxMesh" id="BoxMesh_fin"]
+size = Vector3(0.08, 0.4, 1.2)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_wheel_front"]
+top_radius = 0.35
+bottom_radius = 0.35
+height = 0.35
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_wheel_rear"]
+top_radius = 0.55
+bottom_radius = 0.55
+height = 0.35
+
+[node name="Future" type="Node3D"]
+
+[node name="body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
+mesh = SubResource("CapsuleMesh_body")
+
+[node name="Fin" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 1.6)
+mesh = SubResource("BoxMesh_fin")
+
+[node name="WheelFL" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.1, -0.4, -1.7)
+
+[node name="Mesh" type="MeshInstance3D" parent="WheelFL"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("CylinderMesh_wheel_front")
+
+[node name="WheelFR" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, -0.4, -1.7)
+
+[node name="Mesh" type="MeshInstance3D" parent="WheelFR"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("CylinderMesh_wheel_front")
+
+[node name="WheelRL" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, -1.1, -0.25, 1.7)
+mesh = SubResource("CylinderMesh_wheel_rear")
+
+[node name="WheelRR" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 1.1, -0.25, 1.7)
+mesh = SubResource("CylinderMesh_wheel_rear")

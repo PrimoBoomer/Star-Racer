@@ -1,0 +1,44 @@
+[gd_scene format=3 uid="uid://cclassiccar00"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_body"]
+size = Vector3(2.2, 0.55, 4.4)
+
+[sub_resource type="BoxMesh" id="BoxMesh_cabin"]
+size = Vector3(2.0, 0.5, 2.6)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_wheel"]
+top_radius = 0.45
+bottom_radius = 0.45
+height = 0.35
+
+[node name="Classic" type="Node3D"]
+
+[node name="body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05, 0)
+mesh = SubResource("BoxMesh_body")
+
+[node name="Cabin" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+mesh = SubResource("BoxMesh_cabin")
+
+[node name="WheelFL" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.05, -0.4, -1.6)
+
+[node name="Mesh" type="MeshInstance3D" parent="WheelFL"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("CylinderMesh_wheel")
+
+[node name="WheelFR" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.05, -0.4, -1.6)
+
+[node name="Mesh" type="MeshInstance3D" parent="WheelFR"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("CylinderMesh_wheel")
+
+[node name="WheelRL" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, -1.05, -0.4, 1.6)
+mesh = SubResource("CylinderMesh_wheel")
+
+[node name="WheelRR" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 1.05, -0.4, 1.6)
+mesh = SubResource("CylinderMesh_wheel")

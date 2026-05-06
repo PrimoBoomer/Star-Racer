@@ -118,7 +118,7 @@ static func _make_pad(parent: Node3D, prim: Dictionary) -> void:
 	# axis-aligned (server matches the AABB), so only the visuals get rotated.
 	var visual := Node3D.new()
 	visual.position.y = -size.y * 0.5
-	visual.rotation.y = atan2(heading.x, -heading.z)
+	visual.rotation.y = atan2(heading.x, heading.z)
 	root.add_child(visual)
 
 	# Local dome dims (along chevron-forward axis = local Z).

@@ -4,16 +4,16 @@ class_name Game
 
 const CAR_MODELS = [
 	{"id": "sport",   "name": "Sport",
-	 "path": "res://assets/models/kenney_race_car.glb",
-	 "wheel_fl": "wheelFrontLeft",   "wheel_fr": "wheelFrontRight",
+	 "path": "res://scenes/cars/sport.tscn",
+	 "wheel_fl": "WheelFL", "wheel_fr": "WheelFR",
 	 "body_mesh": "body"},
 	{"id": "classic", "name": "Classic",
-	 "path": "res://assets/models/race_car_red.glb",
-	 "wheel_fl": "wheelFrontLeft",   "wheel_fr": "wheelFrontRight",
+	 "path": "res://scenes/cars/classic.tscn",
+	 "wheel_fl": "WheelFL", "wheel_fr": "WheelFR",
 	 "body_mesh": "body"},
 	{"id": "future",  "name": "Future",
-	 "path": "res://assets/models/race-future.glb",
-	 "wheel_fl": "wheel-front-left", "wheel_fr": "wheel-front-right",
+	 "path": "res://scenes/cars/future.tscn",
+	 "wheel_fl": "WheelFL", "wheel_fr": "WheelFR",
 	 "body_mesh": "body"},
 ]
 
@@ -21,11 +21,7 @@ static func get_car_model(model_id: String) -> Dictionary:
 	for m in CAR_MODELS:
 		if m["id"] == model_id:
 			var def: Dictionary = m.duplicate()
-			match model_id:
-				"sport", "classic":
-					def["transform"] = Transform3D(Vector3(-3.5, 0, 0), Vector3(0, 3.5, 0), Vector3(0, 0, -3.5), Vector3(-1.22, -0.58, -2.32))
-				"future":
-					def["transform"] = Transform3D(Vector3(-2.0, 0, 0), Vector3(0, 2.0, 0), Vector3(0, 0, -2.0), Vector3(0.0, -0.634, 0.0))
+			def["transform"] = Transform3D.IDENTITY
 			return def
 	return get_car_model("sport")
 
@@ -569,6 +565,8 @@ func _handle_lobby_message(message: Dictionary) -> void:
 			var t: float = float(event["Countdown"]["time"])
 			%UI.set_info_label("Start in %d..." % int(t))
 			%UI.start_lights_countdown(t)
+			if self.mode == Mode.LOBBY_INTERMISSION:
+				%UI.show_pre_race_view()
 		if event.has("RaceFinished"):
 			var finished = event["RaceFinished"]
 			self._last_race_rankings = finished.get("rankings", [])
